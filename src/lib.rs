@@ -1,0 +1,1 @@
+mod rusty_coin;
