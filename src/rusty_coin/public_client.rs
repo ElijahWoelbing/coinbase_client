@@ -1,29 +1,12 @@
+use super::error::{Error, ErrorKind};
+use super::json;
 use futures;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json;
+
 const COINBASE_API_URL: &str = "https://api.pro.coinbase.com";
 
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Product {
-    id: String,
-    display_name: String,
-    base_currency: String,
-    quote_currency: String,
-    base_increment: String,
-    quote_increment: String,
-    base_min_size: String,
-    base_max_size: String,
-    min_market_funds: String,
-    max_market_funds: String,
-    status: String,
-    status_message: String,
-    cancel_only: bool,
-    limit_only: bool,
-    post_only: bool,
-    trading_disabled: bool,
-}
 pub struct PublicClient {
     reqwest_client: reqwest::Client,
 }
@@ -35,7 +18,7 @@ impl PublicClient {
         }
     }
 
-    async fn get(&self, url: String) -> Result<reqwest::Response, reqwest::Error> {
+    async fn get(&self, url: &str) -> Result<reqwest::Response, Error> {
         let res = self
             .reqwest_client
             .get(url)
@@ -43,20 +26,17 @@ impl PublicClient {
             .send()
             .await?;
         if !res.status().is_success() {
-        
+            return Err(Error::new(ErrorKind::HttpError));
         }
 
-        
         Ok(res)
     }
 
-    pub async fn get_products(&self) -> Result<Vec<Product>, reqwest::Error>  {
+    pub async fn get_products(&self) -> Result<Vec<json::Product>, Error> {
         let url = format!("{}/products", COINBASE_API_URL);
-        let products: Vec<Product> = self.get(url).await?.json().await?;
+        let products: Vec<json::Product> = self.get(&url).await?.json().await?;
         Ok(products)
     }
-
-    
 }
 
 impl Default for PublicClient {
@@ -71,13 +51,17 @@ mod tests {
     use super::*;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn test_get() {
+        let client = PublicClient::new();
+        let future = client.get("https://www.rust-lang.org");
+        let res = futures::executor::block_on(future).unwrap();
+        assert!(res.status().is_success());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_get_products() {
         let client = PublicClient::new();
         let future = client.get_products();
-        let res = futures::executor::block_on(future).unwrap();
-        for p in res.iter() {
-            println!("{:?}", p.id)
-        }
-        assert!(res.len() > 0);
+        let json = futures::executor::block_on(future).unwrap();
     }
 }
