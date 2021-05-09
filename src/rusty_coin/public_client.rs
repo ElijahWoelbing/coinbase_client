@@ -7,6 +7,12 @@ use serde_json;
 
 const COINBASE_API_URL: &str = "https://api.pro.coinbase.com";
 
+pub enum OrderLevel {
+    one,
+    two,
+    three,
+}
+
 pub struct PublicClient {
     reqwest_client: reqwest::Client,
 }
@@ -26,7 +32,7 @@ impl PublicClient {
             .send()
             .await?;
         if !res.status().is_success() {
-            return Err(Error::new(ErrorKind::HttpError));
+            return Err(Error::new(ErrorKind::Status));
         }
 
         Ok(res)
@@ -37,11 +43,29 @@ impl PublicClient {
         let products: Vec<json::Product> = self.get(&url).await?.json().await?;
         Ok(products)
     }
-}
 
-impl Default for PublicClient {
-    fn default() -> Self {
-        Self::new()
+    pub async fn get_product(&self, id: &str) -> Result<json::Product, Error> {
+        let url = format!("{}/products/{}", COINBASE_API_URL, id);
+        let product: json::Product = self.get(&url).await?.json().await?;
+        Ok(product)
+    }
+
+    // level 1 Only the best bid and ask
+    // level 2 Top 50 bids and asks (aggregated)
+    // level 3 Full order book (non aggregated)
+    pub async fn get_product_order_book(
+        &self,
+        id: &str,
+        level: OrderLevel,
+    ) -> Result<json::OrderBook, Error> {
+        let level = match level {
+            OrderLevel::one => "1",
+            OrderLevel::two => "2",
+            OrderLevel::three => "3",
+        };
+        let url = format!("{}/products/{}/book?level={}", COINBASE_API_URL, id, level);
+        let book: json::OrderBook = self.get(&url).await?.json().await?;
+        Ok(book)
     }
 }
 
@@ -63,5 +87,23 @@ mod tests {
         let client = PublicClient::new();
         let future = client.get_products();
         let json = futures::executor::block_on(future).unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn test_get_product() {
+        let client = PublicClient::new();
+        let future = client.get_product("MIR-EUR");
+        let json = futures::executor::block_on(future).unwrap();
+    }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+
+    async fn test_get_product_order_book() {
+        let client = PublicClient::new();
+        let future1 = client.get_product_order_book("MIR-EUR", OrderLevel::one);
+        let future2 = client.get_product_order_book("MIR-EUR", OrderLevel::two);
+        let future3 = client.get_product_order_book("MIR-EUR", OrderLevel::three);
+        let json1 = futures::executor::block_on(future1).unwrap();
+        let json2 = futures::executor::block_on(future2).unwrap();
+        let json3 = futures::executor::block_on(future3).unwrap();
     }
 }

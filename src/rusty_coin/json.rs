@@ -20,3 +20,16 @@ pub struct Product {
     pub post_only: bool,
     pub trading_disabled: bool,
 }
+#[derive(Serialize, Deserialize, Debug)]
+
+pub struct Bid(String, String, i32);
+#[derive(Serialize, Deserialize, Debug)]
+
+pub struct Ask(String, String, i32);
+#[derive(Serialize, Deserialize, Debug)]
+
+pub struct OrderBook {
+    bids: Vec<Bid>,
+    asks: Vec<Ask>,
+    sequence: i32,
+}
