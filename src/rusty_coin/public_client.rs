@@ -16,6 +16,7 @@ enum OrderLevel {
 pub struct PublicClient {
     reqwest_client: reqwest::Client,
 }
+
 impl PublicClient {
     pub fn new() -> Self {
         Self {
@@ -155,6 +156,7 @@ mod tests {
         let future = client.get_product_ticker("MIR-EUR");
         let json = futures::executor::block_on(future).unwrap();
     }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_get_product_trades() {
         let client = PublicClient::new();
