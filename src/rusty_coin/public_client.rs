@@ -90,77 +90,51 @@ impl PublicClient {
         Ok(book)
     }
 
-    async fn get_product_ticker(&self, id: &str) -> Result<Ticker, reqwest::Error> {
+    pub async fn get_product_ticker(&self, id: &str) -> Result<Ticker, reqwest::Error> {
         let url = format!("{}/products/{}/ticker", COINBASE_API_URL, id);
         let ticker = self.get(&url).await?.json().await?;
         Ok(ticker)
     }
 
-    async fn get_product_trades(&self, id: &str) -> Result<Vec<Trade>, reqwest::Error> {
+    pub async fn get_product_trades(&self, id: &str) -> Result<Vec<Trade>, reqwest::Error> {
         let url = format!("{}/products/{}/trades", COINBASE_API_URL, id);
         let trades: Vec<Trade> = self.get(&url).await?.json().await?;
         Ok(trades)
+    }
+
+    pub async fn get_product_historic_rates(
+        &self,
+        id: &str,
+    ) -> Result<Vec<HistoricRate>, reqwest::Error> {
+        let url = format!("{}/products/{}/candles", COINBASE_API_URL, id);
+        let rates: Vec<HistoricRate> = self.get(&url).await?.json().await?;
+        Ok(rates)
+    }
+
+    pub async fn get_product_24hr_stats(
+        &self,
+        id: &str,
+    ) -> Result<TwentyFourHourStats, reqwest::Error> {
+        let url = format!("{}/products/{}/stats", COINBASE_API_URL, id);
+        let stats: TwentyFourHourStats = self.get(&url).await?.json().await?;
+        Ok(stats)
+    }
+
+    pub async fn get_currencies(&self)-> Result<Vec<Currency>, reqwest::Error>{
+        let url = format!("{}/currencies", COINBASE_API_URL);
+        let currencies: Vec<Currency> = self.get(&url).await?.json().await?;
+        Ok(currencies)
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_get() {
         let client = PublicClient::new();
         let future = client.get("https://www.rust-lang.org");
         let res = futures::executor::block_on(future).unwrap();
         assert!(res.status().is_success());
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_products() {
-        let client = PublicClient::new();
-        let future = client.get_products();
-        let json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product() {
-        let client = PublicClient::new();
-        let future = client.get_product("MIR-EUR");
-        let json = futures::executor::block_on(future).unwrap();
-    }
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_order_book_all() {
-        let client = PublicClient::new();
-        let future = client.get_product_order_book_all("MIR-EUR");
-        let json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_order_book_top50() {
-        let client = PublicClient::new();
-        let future = client.get_product_order_book_top50("MIR-EUR");
-        let json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_order_book() {
-        let client = PublicClient::new();
-        let future = client.get_product_order_book("MIR-EUR");
-        let json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_ticker() {
-        let client = PublicClient::new();
-        let future = client.get_product_ticker("MIR-EUR");
-        let json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_trades() {
-        let client = PublicClient::new();
-        let future = client.get_product_trades("MIR-EUR");
-        let json = futures::executor::block_on(future).unwrap();
     }
 }

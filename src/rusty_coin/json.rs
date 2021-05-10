@@ -1,7 +1,4 @@
-use std::u64;
-
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Product {
@@ -22,11 +19,8 @@ pub struct Product {
     pub post_only: bool,
     pub trading_disabled: bool,
 }
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Bid(String, String, i32);
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Ask(String, String, i32);
-#[derive(Serialize, Deserialize, Debug)]
+
+#[derive(Deserialize, Debug)]
 pub struct BookEntry {
     pub price: String,
     pub size: String,
@@ -46,7 +40,8 @@ pub struct OrderBook<T> {
     asks: Vec<T>,
     sequence: u64,
 }
-#[derive(Serialize, Deserialize, Debug)]
+
+#[derive(Deserialize, Debug)]
 pub struct Ticker {
     trade_id: u64,
     price: String,
@@ -56,11 +51,59 @@ pub struct Ticker {
     volume: String,
     time: String,
 }
-#[derive(Serialize, Deserialize, Debug)]
+
+#[derive(Deserialize, Debug)]
+pub struct HistoricRate {
+    time: u64,
+    low: f64,
+    high: f64,
+    open: f64,
+    close: f64,
+    volume: f64,
+}
+#[derive(Deserialize, Debug)]
 pub struct Trade {
     time: String,
     trade_id: u64,
     price: String,
     size: String,
-    side: String
+    side: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TwentyFourHourStats {
+    open: String,
+    high: String,
+    low: String,
+    volume: String,
+    last: String,
+    volume_30day: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Currency {
+    id: String,
+    name: String,
+    min_size: String,
+    status: String,
+    message: String,
+    max_precision: String,
+    convertible_to: Vec<String>,
+    details: CurrencyDetails,
+}
+
+#[derive(Deserialize, Debug)]
+struct CurrencyDetails {
+    r#type: String, // use raw identifier to allow reserved keyword
+    symbol: String,
+    network_confirmations: u64,
+    sort_order: u64,
+    crypto_address_link: String,
+    crypto_transaction_link: String,
+    push_payment_methods: Vec<String>,
+    group_types: Vec<String>,
+    display_name: String,
+    processing_time_seconds: f64,
+    min_withdrawal_amount: f64,
+    max_withdrawal_amount: f64,
 }
