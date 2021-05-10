@@ -64,12 +64,15 @@ impl PublicClient {
     }
 
     // level 1 Only the best bid and ask
-    pub async fn get_order_book(&self, id: &str) -> Result<OrderBook<BookEntry>, reqwest::Error> {
+    pub async fn get_product_order_book(
+        &self,
+        id: &str,
+    ) -> Result<OrderBook<BookEntry>, reqwest::Error> {
         Ok(self.order_book(id, OrderLevel::One).await?)
     }
 
     // level 2 Top 50 bids and asks (aggregated)
-    pub async fn get_order_book_top50(
+    pub async fn get_product_order_book_top50(
         &self,
         id: &str,
     ) -> Result<OrderBook<BookEntry>, reqwest::Error> {
@@ -77,7 +80,7 @@ impl PublicClient {
     }
 
     // level 3 Full order book (non aggregated)
-    pub async fn get_order_book_all(
+    pub async fn get_product_order_book_all(
         &self,
         id: &str,
     ) -> Result<OrderBook<FullBookEntry>, reqwest::Error> {
@@ -90,6 +93,12 @@ impl PublicClient {
         let url = format!("{}/products/{}/ticker", COINBASE_API_URL, id);
         let ticker = self.get(&url).await?.json().await?;
         Ok(ticker)
+    }
+
+    async fn get_product_trades(&self, id: &str) -> Result<Vec<Trade>, reqwest::Error> {
+        let url = format!("{}/products/{}/trades", COINBASE_API_URL, id);
+        let trades: Vec<Trade> = self.get(&url).await?.json().await?;
+        Ok(trades)
     }
 }
 
@@ -120,20 +129,36 @@ mod tests {
         let json = futures::executor::block_on(future).unwrap();
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn test_get_product_order_book_all() {
+        let client = PublicClient::new();
+        let future = client.get_product_order_book_all("MIR-EUR");
+        let json = futures::executor::block_on(future).unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn test_get_product_order_book_top50() {
+        let client = PublicClient::new();
+        let future = client.get_product_order_book_top50("MIR-EUR");
+        let json = futures::executor::block_on(future).unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_get_product_order_book() {
         let client = PublicClient::new();
-        let future1 = client.get_order_book_all("MIR-EUR");
-        let future2 = client.get_order_book("MIR-EUR");
-        let future3 = client.get_order_book_top50("MIR-EUR");
-        let json1 = futures::executor::block_on(future1).unwrap();
-        let json2 = futures::executor::block_on(future2).unwrap();
-        let json3 = futures::executor::block_on(future3).unwrap();
+        let future = client.get_product_order_book("MIR-EUR");
+        let json = futures::executor::block_on(future).unwrap();
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_get_product_ticker() {
         let client = PublicClient::new();
         let future = client.get_product_ticker("MIR-EUR");
+        let json = futures::executor::block_on(future).unwrap();
+    }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn test_get_product_trades() {
+        let client = PublicClient::new();
+        let future = client.get_product_trades("MIR-EUR");
         let json = futures::executor::block_on(future).unwrap();
     }
 }

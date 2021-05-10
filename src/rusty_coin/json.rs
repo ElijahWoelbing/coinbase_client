@@ -56,3 +56,11 @@ pub struct Ticker {
     volume: String,
     time: String,
 }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Trade {
+    time: String,
+    trade_id: u64,
+    price: String,
+    size: String,
+    side: String
+}
