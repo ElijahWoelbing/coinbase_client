@@ -1,5 +1,5 @@
 use super::error::{Error, ErrorKind};
-use super::json;
+use super::json::*;
 use futures;
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -7,10 +7,10 @@ use serde_json;
 
 const COINBASE_API_URL: &str = "https://api.pro.coinbase.com";
 
-pub enum OrderLevel {
-    one,
-    two,
-    three,
+enum OrderLevel {
+    One = 1,
+    Two = 2,
+    Three = 3,
 }
 
 pub struct PublicClient {
@@ -24,7 +24,7 @@ impl PublicClient {
         }
     }
 
-    async fn get(&self, url: &str) -> Result<reqwest::Response, Error> {
+    async fn get(&self, url: &str) -> Result<reqwest::Response, reqwest::Error> {
         let res = self
             .reqwest_client
             .get(url)
@@ -32,40 +32,64 @@ impl PublicClient {
             .send()
             .await?;
         if !res.status().is_success() {
-            return Err(Error::new(ErrorKind::Status));
+            // return Err(Error::new(ErrorKind::Status));
         }
 
         Ok(res)
     }
 
-    pub async fn get_products(&self) -> Result<Vec<json::Product>, Error> {
+    pub async fn get_products(&self) -> Result<Vec<Product>, Error> {
         let url = format!("{}/products", COINBASE_API_URL);
-        let products: Vec<json::Product> = self.get(&url).await?.json().await?;
+        let products: Vec<Product> = self.get(&url).await?.json().await?;
         Ok(products)
     }
 
-    pub async fn get_product(&self, id: &str) -> Result<json::Product, Error> {
+    pub async fn get_product(&self, id: &str) -> Result<Product, Error> {
         let url = format!("{}/products/{}", COINBASE_API_URL, id);
-        let product: json::Product = self.get(&url).await?.json().await?;
+        let product: Product = self.get(&url).await?.json().await?;
         Ok(product)
     }
 
-    // level 1 Only the best bid and ask
-    // level 2 Top 50 bids and asks (aggregated)
-    // level 3 Full order book (non aggregated)
-    pub async fn get_product_order_book(
+    async fn order_book(
         &self,
         id: &str,
         level: OrderLevel,
-    ) -> Result<json::OrderBook, Error> {
-        let level = match level {
-            OrderLevel::one => "1",
-            OrderLevel::two => "2",
-            OrderLevel::three => "3",
-        };
-        let url = format!("{}/products/{}/book?level={}", COINBASE_API_URL, id, level);
-        let book: json::OrderBook = self.get(&url).await?.json().await?;
+    ) -> Result<OrderBook<BookEntry>, reqwest::Error> {
+        let url = format!(
+            "{}/products/{}/book?level={}",
+            COINBASE_API_URL, id, level as u8
+        );
+        let book: OrderBook<BookEntry> = self.get(&url).await?.json().await?;
         Ok(book)
+    }
+
+    // level 1 Only the best bid and ask
+    pub async fn get_order_book(&self, id: &str) -> Result<OrderBook<BookEntry>, reqwest::Error> {
+        Ok(self.order_book(id, OrderLevel::One).await?)
+    }
+
+    // level 2 Top 50 bids and asks (aggregated)
+    pub async fn get_order_book_top50(
+        &self,
+        id: &str,
+    ) -> Result<OrderBook<BookEntry>, reqwest::Error> {
+        Ok(self.order_book(id, OrderLevel::Two).await?)
+    }
+
+    // level 3 Full order book (non aggregated)
+    pub async fn get_order_book_all(
+        &self,
+        id: &str,
+    ) -> Result<OrderBook<FullBookEntry>, reqwest::Error> {
+        let url = format!("{}/products/{}/book?level=3", COINBASE_API_URL, id);
+        let book: OrderBook<FullBookEntry> = self.get(&url).await?.json().await?;
+        Ok(book)
+    }
+
+    async fn get_product_ticker(&self, id: &str) -> Result<Ticker, reqwest::Error> {
+        let url = format!("{}/products/{}/ticker", COINBASE_API_URL, id);
+        let ticker = self.get(&url).await?.json().await?;
+        Ok(ticker)
     }
 }
 
@@ -96,14 +120,20 @@ mod tests {
         let json = futures::executor::block_on(future).unwrap();
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-
     async fn test_get_product_order_book() {
         let client = PublicClient::new();
-        let future1 = client.get_product_order_book("MIR-EUR", OrderLevel::one);
-        let future2 = client.get_product_order_book("MIR-EUR", OrderLevel::two);
-        let future3 = client.get_product_order_book("MIR-EUR", OrderLevel::three);
+        let future1 = client.get_order_book_all("MIR-EUR");
+        let future2 = client.get_order_book("MIR-EUR");
+        let future3 = client.get_order_book_top50("MIR-EUR");
         let json1 = futures::executor::block_on(future1).unwrap();
         let json2 = futures::executor::block_on(future2).unwrap();
         let json3 = futures::executor::block_on(future3).unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn test_get_product_ticker() {
+        let client = PublicClient::new();
+        let future = client.get_product_ticker("MIR-EUR");
+        let json = futures::executor::block_on(future).unwrap();
     }
 }

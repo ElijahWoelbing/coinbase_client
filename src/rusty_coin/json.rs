@@ -1,3 +1,5 @@
+use std::u64;
+
 use serde::{Deserialize, Serialize};
 use serde_json;
 
@@ -21,15 +23,36 @@ pub struct Product {
     pub trading_disabled: bool,
 }
 #[derive(Serialize, Deserialize, Debug)]
-
 pub struct Bid(String, String, i32);
 #[derive(Serialize, Deserialize, Debug)]
-
 pub struct Ask(String, String, i32);
 #[derive(Serialize, Deserialize, Debug)]
+pub struct BookEntry {
+    pub price: String,
+    pub size: String,
+    pub num_orders: u64,
+}
 
-pub struct OrderBook {
-    bids: Vec<Bid>,
-    asks: Vec<Ask>,
-    sequence: i32,
+#[derive(Deserialize, Debug)]
+pub struct FullBookEntry {
+    price: String,
+    size: String,
+    order_id: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OrderBook<T> {
+    bids: Vec<T>,
+    asks: Vec<T>,
+    sequence: u64,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Ticker {
+    trade_id: u64,
+    price: String,
+    size: String,
+    bid: String,
+    ask: String,
+    volume: String,
+    time: String,
 }
