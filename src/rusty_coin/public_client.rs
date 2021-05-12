@@ -2,8 +2,7 @@ use super::error::{Error, ErrorKind};
 use super::json::*;
 use futures;
 use reqwest;
-use serde::{Deserialize, Serialize};
-use serde_json;
+use serde::de::DeserializeOwned;
 
 const COINBASE_API_URL: &str = "https://api.pro.coinbase.com";
 
@@ -25,8 +24,11 @@ impl PublicClient {
         }
     }
 
-    async fn get(&self, url: &str) -> Result<reqwest::Response, reqwest::Error> {
-        let res = self
+    async fn get_and_deserialize<T>(&self, url: &str) -> Result<T, reqwest::Error>
+    where
+        T: DeserializeOwned,
+    {
+        let mut res = self
             .reqwest_client
             .get(url)
             .header(reqwest::header::USER_AGENT, "rusty-coin")
@@ -35,19 +37,20 @@ impl PublicClient {
         if !res.status().is_success() {
             // return Err(Error::new(ErrorKind::Status));
         }
+        let json = res.json().await?;
 
-        Ok(res)
+        Ok(json)
     }
 
     pub async fn get_products(&self) -> Result<Vec<Product>, Error> {
         let url = format!("{}/products", COINBASE_API_URL);
-        let products: Vec<Product> = self.get(&url).await?.json().await?;
+        let products: Vec<Product> = self.get_and_deserialize(&url).await?;
         Ok(products)
     }
 
     pub async fn get_product(&self, id: &str) -> Result<Product, Error> {
         let url = format!("{}/products/{}", COINBASE_API_URL, id);
-        let product: Product = self.get(&url).await?.json().await?;
+        let product: Product = self.get_and_deserialize(&url).await?;
         Ok(product)
     }
 
@@ -60,7 +63,7 @@ impl PublicClient {
             "{}/products/{}/book?level={}",
             COINBASE_API_URL, id, level as u8
         );
-        let book: OrderBook<BookEntry> = self.get(&url).await?.json().await?;
+        let book: OrderBook<BookEntry> = self.get_and_deserialize(&url).await?;
         Ok(book)
     }
 
@@ -86,19 +89,19 @@ impl PublicClient {
         id: &str,
     ) -> Result<OrderBook<FullBookEntry>, reqwest::Error> {
         let url = format!("{}/products/{}/book?level=3", COINBASE_API_URL, id);
-        let book: OrderBook<FullBookEntry> = self.get(&url).await?.json().await?;
+        let book: OrderBook<FullBookEntry> = self.get_and_deserialize(&url).await?;
         Ok(book)
     }
 
     pub async fn get_product_ticker(&self, id: &str) -> Result<Ticker, reqwest::Error> {
         let url = format!("{}/products/{}/ticker", COINBASE_API_URL, id);
-        let ticker = self.get(&url).await?.json().await?;
+        let ticker = self.get_and_deserialize(&url).await?;
         Ok(ticker)
     }
 
     pub async fn get_product_trades(&self, id: &str) -> Result<Vec<Trade>, reqwest::Error> {
         let url = format!("{}/products/{}/trades", COINBASE_API_URL, id);
-        let trades: Vec<Trade> = self.get(&url).await?.json().await?;
+        let trades: Vec<Trade> = self.get_and_deserialize(&url).await?;
         Ok(trades)
     }
 
@@ -107,7 +110,7 @@ impl PublicClient {
         id: &str,
     ) -> Result<Vec<HistoricRate>, reqwest::Error> {
         let url = format!("{}/products/{}/candles", COINBASE_API_URL, id);
-        let rates: Vec<HistoricRate> = self.get(&url).await?.json().await?;
+        let rates: Vec<HistoricRate> = self.get_and_deserialize(&url).await?;
         Ok(rates)
     }
 
@@ -116,14 +119,20 @@ impl PublicClient {
         id: &str,
     ) -> Result<TwentyFourHourStats, reqwest::Error> {
         let url = format!("{}/products/{}/stats", COINBASE_API_URL, id);
-        let stats: TwentyFourHourStats = self.get(&url).await?.json().await?;
+        let stats: TwentyFourHourStats = self.get_and_deserialize(&url).await?;
         Ok(stats)
     }
 
-    pub async fn get_currencies(&self)-> Result<Vec<Currency>, reqwest::Error>{
+    pub async fn get_currencies(&self) -> Result<Vec<Currency>, reqwest::Error> {
         let url = format!("{}/currencies", COINBASE_API_URL);
-        let currencies: Vec<Currency> = self.get(&url).await?.json().await?;
+        let currencies: Vec<Currency> = self.get_and_deserialize(&url).await?;
         Ok(currencies)
+    }
+
+    pub async fn get_currency(&self, id: &str) -> Result<Currency, reqwest::Error> {
+        let url = format!("{}/currencies/{}", COINBASE_API_URL, id);
+        let currency: Currency = self.get_and_deserialize(&url).await?;
+        Ok(currency)
     }
 }
 
@@ -131,10 +140,9 @@ impl PublicClient {
 mod tests {
     use super::*;
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get() {
+    async fn test_get_and_deserialize() {
         let client = PublicClient::new();
-        let future = client.get("https://www.rust-lang.org");
+        let future = client.get_and_deserialize("https://www.rust-lang.org");
         let res = futures::executor::block_on(future).unwrap();
-        assert!(res.status().is_success());
     }
 }
