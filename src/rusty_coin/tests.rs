@@ -74,3 +74,10 @@ async fn test_get_currency() {
     let future = client.get_currency("BTC");
     let json = futures::executor::block_on(future).unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_get_time() {
+    let client = PublicClient::new();
+    let future = client.get_time();
+    let json = futures::executor::block_on(future).unwrap();
+}

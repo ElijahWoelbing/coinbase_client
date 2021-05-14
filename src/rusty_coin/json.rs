@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize)]
 pub struct Product {
     pub id: String,
     pub display_name: String,
@@ -80,6 +81,7 @@ pub struct TwentyFourHourStats {
     volume_30day: String,
 }
 
+// some field are ompited when a single currency is returned hence the Options enum
 #[derive(Deserialize, Debug)]
 pub struct Currency {
     id: String,
@@ -88,12 +90,13 @@ pub struct Currency {
     status: String,
     message: String,
     max_precision: String,
-    convertible_to: Vec<String>,
+    convertible_to: Option<Vec<String>>,
     details: CurrencyDetails,
 }
 
+// some field are ompited when a single currency is returned hence the Options enum
 #[derive(Deserialize, Debug)]
-struct CurrencyDetails {
+pub struct CurrencyDetails {
     r#type: String, // use raw identifier to allow reserved keyword
     symbol: String,
     network_confirmations: u64,
@@ -102,8 +105,14 @@ struct CurrencyDetails {
     crypto_transaction_link: String,
     push_payment_methods: Vec<String>,
     group_types: Vec<String>,
-    display_name: String,
-    processing_time_seconds: f64,
+    display_name: Option<String>,
+    processing_time_seconds: Option<f64>,
     min_withdrawal_amount: f64,
     max_withdrawal_amount: f64,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Time {
+    iso: String,
+    epoch: f64,
 }
