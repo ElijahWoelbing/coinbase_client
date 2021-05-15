@@ -1,1 +1,1 @@
-mod rusty_coin;
+mod coinbase_client;
