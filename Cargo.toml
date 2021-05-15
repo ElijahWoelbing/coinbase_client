@@ -8,7 +8,7 @@ documentation = ""
 homepage = ""
 readme = "README.md"
 license = "MIT OR Apache-2.0"
-keywords = ["coinbase", "coinbase pro", "cryptocurrency",]
+keywords = ["coinbase", "cryptocurrency",]
 exclude = [
 ]
 
