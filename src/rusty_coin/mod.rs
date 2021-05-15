@@ -1,4 +1,3 @@
-mod public_client;
+pub mod public_client;
 mod json;
 mod error;
-mod tests;

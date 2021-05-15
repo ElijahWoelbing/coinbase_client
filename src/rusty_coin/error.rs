@@ -1,8 +1,6 @@
 use std::error::Error as StdError;
 use std::fmt;
 
-use tokio::fs::write;
-
 #[derive(Debug)]
 pub struct Error {
     kind: ErrorKind,
