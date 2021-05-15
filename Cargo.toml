@@ -1,11 +1,11 @@
 [package]
-name = "rusty_coin"
+name = "coinbase-client"
 version = "0.1.0"
 authors = ["Elijah Woelbing <woelbingelijah@gmail.com>"]
 edition = "2018"
 description = "asynchronous library for the Coinbase's Pro API"
 readme = "README.md"
-repository = "https://github.com/ElijahWoelbing/rusty_coin"
+repository = "https://github.com/ElijahWoelbing/coinbase_client"
 license = "MIT OR Apache-2.0"
 keywords = ["coinbase", "cryptocurrency",]
 
