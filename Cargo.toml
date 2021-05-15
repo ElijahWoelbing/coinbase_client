@@ -1,17 +1,14 @@
 [package]
 name = "rusty_coin"
-description = "asynchronous library for the Coinbase's Pro API"
 version = "0.1.0"
 authors = ["Elijah Woelbing <woelbingelijah@gmail.com>"]
 edition = "2018"
-repository = "https://github.com/ElijahWoelbing/rusty_coin"
-documentation = ""
-homepage = ""
+description = "asynchronous library for the Coinbase's Pro API"
 readme = "README.md"
+repository = "https://github.com/ElijahWoelbing/rusty_coin"
 license = "MIT OR Apache-2.0"
 keywords = ["coinbase", "cryptocurrency",]
-exclude = [
-]
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
