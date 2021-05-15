@@ -3,7 +3,10 @@ name = "rusty_coin"
 version = "0.1.0"
 authors = ["Elijah Woelbing <woelbingelijah@gmail.com>"]
 edition = "2018"
-
+repository = "https://github.com/ElijahWoelbing/rusty_coin"
+documentation = ""
+homepage = ""
+readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

@@ -1,8 +1,5 @@
-use std::fmt::format;
-
-use super::error::{Error, ErrorKind};
+use super::error::Error;
 use super::json::*;
-use futures;
 use reqwest;
 use serde::de::DeserializeOwned;
 

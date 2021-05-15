@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use chrono::{DateTime, NaiveDateTime, Utc};
+use serde::{de, Deserialize};
 
 #[derive(Deserialize)]
 pub struct Product {
@@ -30,89 +30,119 @@ pub struct BookEntry {
 
 #[derive(Deserialize, Debug)]
 pub struct FullBookEntry {
-    price: String,
-    size: String,
-    order_id: String,
+    pub price: String,
+    pub size: String,
+    pub order_id: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct OrderBook<T> {
-    bids: Vec<T>,
-    asks: Vec<T>,
-    sequence: u64,
+    pub bids: Vec<T>,
+    pub asks: Vec<T>,
+    pub sequence: u64,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Ticker {
-    trade_id: u64,
-    price: String,
-    size: String,
-    bid: String,
-    ask: String,
-    volume: String,
-    time: String,
+    pub trade_id: u64,
+    pub price: String,
+    pub size: String,
+    pub bid: String,
+    pub ask: String,
+    pub volume: String,
+    #[serde(deserialize_with = "deserialize_datetime")]
+    pub time: DateTime<Utc>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct HistoricRate {
-    time: u64,
-    low: f64,
-    high: f64,
-    open: f64,
-    close: f64,
-    volume: f64,
+    pub time: u64,
+    pub low: f64,
+    pub high: f64,
+    pub open: f64,
+    pub close: f64,
+    pub volume: f64,
 }
 #[derive(Deserialize, Debug)]
 pub struct Trade {
-    time: String,
-    trade_id: u64,
-    price: String,
-    size: String,
-    side: String,
+    #[serde(deserialize_with = "deserialize_datetime")]
+    pub time: DateTime<Utc>,
+    pub trade_id: u64,
+    pub price: String,
+    pub size: String,
+    pub side: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct TwentyFourHourStats {
-    open: String,
-    high: String,
-    low: String,
-    volume: String,
-    last: String,
-    volume_30day: String,
+    pub open: String,
+    pub high: String,
+    pub low: String,
+    pub volume: String,
+    pub last: String,
+    pub volume_30day: String,
 }
 
 // some field are ompited when a single currency is returned hence the Options enum
 #[derive(Deserialize, Debug)]
 pub struct Currency {
-    id: String,
-    name: String,
-    min_size: String,
-    status: String,
-    message: String,
-    max_precision: String,
-    convertible_to: Option<Vec<String>>,
-    details: CurrencyDetails,
+    pub id: String,
+    pub name: String,
+    pub min_size: String,
+    pub status: String,
+    pub message: String,
+    pub max_precision: String,
+    pub convertible_to: Option<Vec<String>>,
+    pub details: CurrencyDetails,
 }
 
 // some field are ompited when a single currency is returned hence the Options enum
 #[derive(Deserialize, Debug)]
 pub struct CurrencyDetails {
-    r#type: String, // use raw identifier to allow reserved keyword
-    symbol: String,
-    network_confirmations: u64,
-    sort_order: u64,
-    crypto_address_link: String,
-    crypto_transaction_link: String,
-    push_payment_methods: Vec<String>,
-    group_types: Vec<String>,
-    display_name: Option<String>,
-    processing_time_seconds: Option<f64>,
-    min_withdrawal_amount: f64,
-    max_withdrawal_amount: f64,
+    pub r#type: String, // use raw identifier to allow reserved keyword
+    pub symbol: String,
+    pub network_confirmations: u64,
+    pub sort_order: u64,
+    pub crypto_address_link: String,
+    pub crypto_transaction_link: String,
+    pub push_payment_methods: Vec<String>,
+    pub group_types: Vec<String>,
+    pub display_name: Option<String>,
+    pub processing_time_seconds: Option<f64>,
+    pub min_withdrawal_amount: f64,
+    pub max_withdrawal_amount: f64,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Time {
-    iso: String,
-    epoch: f64,
+    #[serde(deserialize_with = "deserialize_datetime")]
+    pub iso: DateTime<Utc>,
+    pub epoch: f64,
+}
+
+struct DateTimeFromCustomFormatVisitor;
+
+pub fn deserialize_datetime<'de, D>(d: D) -> Result<DateTime<Utc>, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    d.deserialize_str(DateTimeFromCustomFormatVisitor)
+}
+
+impl<'de> de::Visitor<'de> for DateTimeFromCustomFormatVisitor {
+    type Value = DateTime<Utc>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "a datetime string")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        match NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.fZ") {
+            Ok(ndt) => Ok(DateTime::from_utc(ndt, Utc)),
+            Err(e) => Err(E::custom(format!("Parse error {} for {}", e, value))),
+        }
+    }
 }
