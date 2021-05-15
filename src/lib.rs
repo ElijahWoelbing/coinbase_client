@@ -1,1 +1,1 @@
-mod coinbase_client;
+pub mod coinbase_client;
