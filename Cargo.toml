@@ -1,5 +1,6 @@
 [package]
 name = "rusty_coin"
+description = "asynchronous library for the Coinbase's Pro API"
 version = "0.1.0"
 authors = ["Elijah Woelbing <woelbingelijah@gmail.com>"]
 edition = "2018"
