@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{de, Deserialize};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Product {
     pub id: String,
     pub display_name: String,

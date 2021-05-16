@@ -1,1 +1,3 @@
-pub mod coinbase_client;
+pub mod public_client;
+mod json;
+mod error;
