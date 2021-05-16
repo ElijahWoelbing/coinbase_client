@@ -14,6 +14,9 @@ impl fmt::Display for Error {
             ErrorKind::HTTP(_) => {
                 write!(f, "http error")
             },
+            ErrorKind::Status(status) => {
+                write!(f, "status error {}", status)
+            },
         }
     }
 }
@@ -33,4 +36,5 @@ impl Error {
 #[derive(Debug)]
 pub enum ErrorKind {
     HTTP(reqwest::Error),
+    Status(reqwest::StatusCode)
 }

@@ -120,6 +120,17 @@ pub struct Time {
     pub epoch: f64,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct Account {
+    pub id: String,
+    pub currency: String,
+    pub balance: String,
+    pub available: String,
+    pub hold: String,
+    pub profile_id: String,
+    pub trading_enabled: bool,
+}
+
 struct DateTimeFromCustomFormatVisitor;
 
 pub fn deserialize_datetime<'de, D>(d: D) -> Result<DateTime<Utc>, D::Error>

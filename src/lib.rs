@@ -1,3 +1,4 @@
 pub mod public_client;
-mod json;
-mod error;
+pub mod private_client;
+pub mod json;
+pub mod error;
