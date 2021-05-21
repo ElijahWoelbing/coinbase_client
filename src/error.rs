@@ -36,5 +36,6 @@ impl Error {
 #[derive(Debug)]
 pub enum ErrorKind {
     HTTP(reqwest::Error),
-    Status(reqwest::StatusCode)
+    Status(reqwest::StatusCode),
+    BuilderError(String)
 }

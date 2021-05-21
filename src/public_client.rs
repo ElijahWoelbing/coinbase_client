@@ -1,4 +1,4 @@
-use super::error::Error;
+use super::error::{Error, ErrorKind};
 use super::json::*;
 use reqwest;
 use serde::de::DeserializeOwned;
@@ -31,10 +31,13 @@ impl PublicClient {
             .get(url)
             .header(reqwest::header::USER_AGENT, "rusty-coin")
             .send()
-            .await?
-            .json()
             .await?;
-        Ok(res)
+            let status = res.status();
+            if !status.is_success() {
+                return Err(Error::new(ErrorKind::Status(status)));
+            }
+            let json = res.json().await?;
+        Ok(json)
     }
 
     pub async fn get_products(&self) -> Result<Vec<Product>, Error> {
