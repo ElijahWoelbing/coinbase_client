@@ -2,6 +2,7 @@ use super::error::{Error, ErrorKind};
 use super::json::*;
 use base64;
 use chrono::format::format;
+use core::f64;
 use crypto::{self, mac::Mac};
 use futures;
 use reqwest::{self, header::HeaderMap};
@@ -136,17 +137,11 @@ impl PrivateClient {
         Ok(accounts)
     }
 
-    async fn post_and_deserialize(
-        &self,
-        path: &str,
-        body: OrderParams,
-    ) -> Result<String, reqwest::Error> {
-        let body_json = serde_json::to_string(&body).unwrap();
+    async fn post_and_deserialize(&self, path: &str) -> Result<String, reqwest::Error> {
         let headers = self.access_headers(path, None, "POST");
         let res = self
             .reqwest_client
             .post(format!("{}{}", COINBASE_API_URL, path))
-            .body(body_json)
             .headers(headers)
             .send()
             .await?;
@@ -158,227 +153,46 @@ impl PrivateClient {
         Ok(text)
     }
 
-    pub async fn place_order(&self, body: OrderParams) -> Result<String, reqwest::Error> {
-        Ok(self.post_and_deserialize("./orders", body).await?)
+    pub async fn place_order(&self, body: Order) -> Result<String, reqwest::Error> {
+        Ok(self.post_and_deserialize("./orders").await?)
     }
 }
 
-pub struct OrderParamsBuilder {
-    size: Option<String>,
-    price: String,
-    product_id: String,
-    side: OrderSide,
-    order_type: OrderType,
-    client_oid: Option<Uuid>,
-    stp: SelfTradePervention,
-    stop: Option<OrderStop>,
-    stop_price: Option<String>,
-    time_in_force: Option<TimeInForce>,
-    cancel_after: Option<OrderTime>,
-    post_only: Option<bool>,
-    funds: Option<String>,
+enum Order {
+    Limit {
+        size: f64,
+        price: f64,
+        side: OrderSide,
+    },
+    Market {
+        size_or_funds: SizeOrFunds,
+        price: f64,
+        side: OrderSide,
+    },
 }
 
-impl OrderParamsBuilder {
-    pub fn new(price: String, side: OrderSide, product_id: String, order_type: OrderType) -> Self {
-        Self {
-            size: match order_type {
-                OrderType::Market { market_type } => match market_type {
-                    MarketType::Size { size } => Some(size),
-                    MarketType::SizeAndFunds { size, funds } => Some(size),
-                    _ => None,
-                },
-                OrderType::Limit {
-                    size,
-                    time_in_force,
-                } => Some(size),
-            },
+impl Order {
+    pub fn limit(size: f64, price: f64, side: OrderSide) -> Self {
+        Self::Limit { size, price, side }
+    }
+
+    pub fn market(size_or_funds: SizeOrFunds, price: f64, side: OrderSide) -> Self {
+        Self::Market {
+            size_or_funds,
             price,
             side,
-            product_id,
-            order_type,
-            client_oid: None,
-            stp: SelfTradePervention::DecreaseAndCancel,
-            stop: None,
-            stop_price: None,
-            time_in_force: match order_type {
-                OrderType::Limit {
-                    size,
-                    time_in_force,
-                } => Some(time_in_force),
-                _ => None,
-            },
-            cancel_after: match order_type {
-                OrderType::Limit {
-                    size,
-                    time_in_force,
-                } => match time_in_force {
-                    TimeInForce::GoodTillTime { time, post_only } => Some(time),
-                    _ => None,
-                },
-                _ => None,
-            },
-            post_only: match order_type {
-                OrderType::Limit {
-                    size,
-                    time_in_force,
-                } => match time_in_force {
-                    TimeInForce::GoodTillTime { time, post_only } => Some(post_only),
-                    TimeInForce::GoodTillCanceled { post_only } => Some(post_only),
-                    _ => None,
-                },
-                _ => None,
-            },
-            funds: match order_type {
-                OrderType::Market { market_type } => match market_type {
-                    MarketType::Funds { funds } => Some(funds),
-                    MarketType::SizeAndFunds { size, funds } => Some(funds),
-                    _ => None,
-                },
-                _ => None,
-            },
-        }
-    }
-
-    pub fn set_client_oid(mut self, uuid: Uuid) -> Self {
-        self.client_oid = Some(uuid);
-        self
-    }
-
-    pub fn set_stp(mut self, stp: SelfTradePervention) -> Self {
-        self.stp = stp;
-        self
-    }
-
-    pub fn set_stop(mut self, stop: OrderStop, stop_price: String) -> Self {
-        self.stop_price = Some(stop_price);
-        self.stop = Some(stop);
-        self
-    }
-
-    pub fn build(self) -> OrderParams {
-        OrderParams {
-            size: self.size,
-            price: self.price,
-            side: match self.side {
-                OrderSide::Buy => "buy".to_string(),
-                OrderSide::Sell => "sell".to_string(),
-            },
-            product_id: self.product_id,
-            r#type: match self.order_type {
-                OrderType::Limit {
-                    size: _,
-                    time_in_force: _,
-                } => "limit".to_string(),
-                OrderType::Market { market_type: _ } => "market".to_string(),
-            },
-            client_oid: match self.client_oid {
-                Some(uuid) => Some(uuid.to_string()),
-                None => None,
-            },
-            stp: match self.stp {
-                SelfTradePervention::DecreaseAndCancel => "dc".to_string(),
-                SelfTradePervention::CancelOldest => "co".to_string(),
-                SelfTradePervention::CancelNewest => "cn".to_string(),
-                SelfTradePervention::CancelBoth => "cb".to_string(),
-            },
-            stop: match self.stop {
-                Some(stop) => match stop {
-                    OrderStop::Entry => Some("entry".to_string()),
-                    OrderStop::Loss => Some("loss".to_string()),
-                },
-                None => None,
-            },
-            stop_price: self.stop_price,
-            time_in_force: match self.time_in_force {
-                Some(TimeInForce::GoodTillCanceled { post_only: _ }) => Some("GTC".to_string()),
-                Some(TimeInForce::GoodTillTime {
-                    time: _,
-                    post_only: _,
-                }) => Some("GTT".to_string()),
-                Some(TimeInForce::ImmediateOrCancel) => Some("IOC".to_string()),
-                Some(TimeInForce::FillOrKill) => Some("FOK".to_string()),
-                None => None,
-            },
-            cancel_after: match self.cancel_after {
-                Some(order_time) => match order_time {
-                    OrderTime::OneMinute => Some("min".to_string()),
-                    OrderTime::OneHour => Some("hour".to_string()),
-                    OrderTime::OneDay => Some("day".to_string()),
-                },
-                None => None,
-            },
-            post_only: self.post_only,
-            funds: self.funds,
         }
     }
 }
 
-#[derive(Serialize)]
-struct OrderParams {
-    size: Option<String>,
-    price: String,
-    product_id: String,
-    side: String,
-    r#type: String,
-    client_oid: Option<String>,
-    stp: String,
-    stop: Option<String>,
-    stop_price: Option<String>,
-    time_in_force: Option<String>,
-    cancel_after: Option<String>,
-    post_only: Option<bool>,
-    funds: Option<String>,
-}
-
-pub enum OrderType {
-    Market {
-        market_type: MarketType,
-    },
-    Limit {
-        size: String,
-        time_in_force: TimeInForce,
-    },
-}
-
-pub enum MarketType {
-    Size { size: String },
-    Funds { funds: String },
-    SizeAndFunds { size: String, funds: String },
-}
-
-#[derive(Serialize)]
-pub enum OrderTime {
-    OneMinute,
-    OneHour,
-    OneDay,
-}
-#[derive(Serialize)]
 enum OrderSide {
     Buy,
     Sell,
 }
 
-#[derive(Serialize)]
-pub enum OrderStop {
-    Loss,
-    Entry,
-}
-
-#[derive(Serialize)]
-pub enum TimeInForce {
-    GoodTillCanceled { post_only: bool },
-    GoodTillTime { time: OrderTime, post_only: bool },
-    ImmediateOrCancel,
-    FillOrKill,
-}
-
-#[derive(Serialize)]
-enum SelfTradePervention {
-    DecreaseAndCancel,
-    CancelOldest,
-    CancelNewest,
-    CancelBoth,
+enum SizeOrFunds {
+    Size(f64),
+    Funds(f64),
 }
 
 #[cfg(test)]
@@ -400,13 +214,6 @@ mod tests {
     async fn test_get_accounts() {
         let client = create_client();
         let future = client.get_accounts();
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_place_order() {
-        let client = create_client();
-        let future = client.place_order();
         let _json = futures::executor::block_on(future).unwrap();
     }
 }
