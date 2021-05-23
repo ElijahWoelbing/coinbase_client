@@ -13,18 +13,30 @@ impl fmt::Display for Error {
         match self.kind {
             ErrorKind::HTTP(_) => {
                 write!(f, "http error")
-            },
+            }
             ErrorKind::Status(status) => {
                 write!(f, "status error {}", status)
-            },
+            }
+            ErrorKind::JSON(_) => {
+                write!(f, "json error")
+            }
         }
     }
 }
 
 impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Self {
+        Self {
+            kind: ErrorKind::HTTP(e),
+        }
+    }
+}
 
-        Self { kind: ErrorKind::HTTP(e) }
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self {
+            kind: ErrorKind::JSON(e),
+        }
     }
 }
 
@@ -37,5 +49,5 @@ impl Error {
 pub enum ErrorKind {
     HTTP(reqwest::Error),
     Status(reqwest::StatusCode),
-    BuilderError(String)
+    JSON(serde_json::Error),
 }

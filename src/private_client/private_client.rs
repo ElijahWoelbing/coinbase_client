@@ -1,19 +1,12 @@
-use super::error::{Error, ErrorKind};
-use super::json::*;
+use crate::error::{Error, ErrorKind};
+use crate::json::*;
 use base64;
-use chrono::format::format;
-use core::f64;
 use crypto::{self, mac::Mac};
-use futures;
 use reqwest::{self, header::HeaderMap};
-use serde::{de::DeserializeOwned, ser, Deserialize, Serialize, Serializer};
-use std::{
-    io::Bytes,
-    time::{SystemTime, SystemTimeError},
-};
-use uuid::{self, Uuid};
+use serde;
+use std::time::{SystemTime, SystemTimeError};
 
-const COINBASE_API_URL: &str = "https://api-public.sandbox.pro.coinbase.com";
+const COINBASE_API_URL: &str = "https://api-public.sandbox.pro.coinbase.com"; // sandbox url
 
 pub struct PrivateClient {
     reqwest_client: reqwest::Client,
@@ -34,7 +27,7 @@ impl PrivateClient {
 
     async fn get_and_deserialize<T>(&self, path: &str) -> Result<T, Error>
     where
-        T: DeserializeOwned,
+        T: serde::de::DeserializeOwned,
     {
         let headers = self.access_headers(path, None, "GET");
         let res = self
@@ -45,7 +38,30 @@ impl PrivateClient {
             .await?;
         let status = res.status();
         if !status.is_success() {
-            println!("{}", res.text().await?);
+            return Err(Error::new(ErrorKind::Status(status)));
+        }
+        let json = res.json().await?;
+        Ok(json)
+    }
+
+    async fn post_and_deserialize<T, K>(&self, path: &str, body: K) -> Result<T, Error>
+    where
+        K: serde::Serialize,            // body must serialize
+        T: serde::de::DeserializeOwned, // response must deserialize
+    {
+        let body_string = serde_json::to_string(&body)?;
+        println!("{}", body_string);
+        let headers = self.access_headers(path, Some(&body_string), "POST");
+        let url = format!("{}{}", COINBASE_API_URL, path);
+        let res = self
+            .reqwest_client
+            .post(url)
+            .headers(headers)
+            .json(&body)
+            .send()
+            .await?;
+        let status = res.status();
+        if !status.is_success() {
             return Err(Error::new(ErrorKind::Status(status)));
         }
         let json = res.json().await?;
@@ -137,83 +153,7 @@ impl PrivateClient {
         Ok(accounts)
     }
 
-    async fn post_and_deserialize(&self, path: &str) -> Result<String, reqwest::Error> {
-        let headers = self.access_headers(path, None, "POST");
-        let res = self
-            .reqwest_client
-            .post(format!("{}{}", COINBASE_API_URL, path))
-            .headers(headers)
-            .send()
-            .await?;
-        let status = res.status();
-        let text = res.text().await?;
-        // return Err(Error::new(ErrorKind::Status(status)));
-        println!("{}", status);
-        println!("{}", text);
-        Ok(text)
-    }
-
-    pub async fn place_order(&self, body: Order) -> Result<String, reqwest::Error> {
-        Ok(self.post_and_deserialize("./orders").await?)
-    }
-}
-
-enum Order {
-    Limit {
-        size: f64,
-        price: f64,
-        side: OrderSide,
-    },
-    Market {
-        size_or_funds: SizeOrFunds,
-        price: f64,
-        side: OrderSide,
-    },
-}
-
-impl Order {
-    pub fn limit(size: f64, price: f64, side: OrderSide) -> Self {
-        Self::Limit { size, price, side }
-    }
-
-    pub fn market(size_or_funds: SizeOrFunds, price: f64, side: OrderSide) -> Self {
-        Self::Market {
-            size_or_funds,
-            price,
-            side,
-        }
-    }
-}
-
-enum OrderSide {
-    Buy,
-    Sell,
-}
-
-enum SizeOrFunds {
-    Size(f64),
-    Funds(f64),
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use dotenv;
-    use std::env;
-
-    fn create_client() -> PrivateClient {
-        dotenv::from_filename(".env").expect("error reading .env file");
-        let secret = env::var("SECRET").expect("Cant find api secret");
-        let passphrase = env::var("PASSPHRASE").expect("Cant find api passphrase");
-        let key = env::var("KEY").expect("Cant find api key");
-        PrivateClient::new(secret, passphrase, key)
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_accounts() {
-        let client = create_client();
-        let future = client.get_accounts();
-        let _json = futures::executor::block_on(future).unwrap();
+    pub async fn place_order(&self, order: Order) -> Result<OrderResponse, Error> {
+        Ok(self.post_and_deserialize("/orders", order).await?)
     }
 }

@@ -1,5 +1,7 @@
-use super::error::{Error, ErrorKind};
-use super::json::*;
+use std::{collections::btree_map::Range, usize};
+
+use crate::error::{Error, ErrorKind};
+use crate::json::*;
 use reqwest;
 use serde::de::DeserializeOwned;
 
@@ -8,6 +10,11 @@ const COINBASE_API_URL: &str = "https://api.pro.coinbase.com";
 enum OrderLevel {
     One = 1,
     Two = 2,
+}
+
+pub enum Pagination {
+    Before,
+    After,
 }
 
 pub struct PublicClient {
@@ -32,11 +39,11 @@ impl PublicClient {
             .header(reqwest::header::USER_AGENT, "rusty-coin")
             .send()
             .await?;
-            let status = res.status();
-            if !status.is_success() {
-                return Err(Error::new(ErrorKind::Status(status)));
-            }
-            let json = res.json().await?;
+        let status = res.status();
+        if !status.is_success() {
+            return Err(Error::new(ErrorKind::Status(status)));
+        }
+        let json = res.json().await?;
         Ok(json)
     }
 
@@ -94,8 +101,27 @@ impl PublicClient {
         Ok(ticker)
     }
 
-    pub async fn get_product_trades(&self, id: &str) -> Result<Vec<Trade>, Error> {
-        let url = format!("{}/products/{}/trades", COINBASE_API_URL, id);
+    pub async fn get_product_trades(
+        &self,
+        id: &str,
+        pagination: Option<Pagination>,
+        limit: Option<usize>,
+    ) -> Result<Vec<Trade>, Error> {
+        let mut url = match &pagination {
+            Some(v) => {
+                format!(
+                    "{}/products/{}/trades?{}",
+                    COINBASE_API_URL,
+                    id,
+                    match v {
+                        Pagination::Before => "before=",
+                        Pagination::After => "after=",
+                    }
+                )
+            }
+            None => format!("{}/products/{}/trades", COINBASE_API_URL, id),
+        };
+
         let trades: Vec<Trade> = self.get_and_deserialize(&url).await?;
         Ok(trades)
     }
@@ -128,91 +154,5 @@ impl PublicClient {
         let url = format!("{}/time", COINBASE_API_URL);
         let time: Time = self.get_and_deserialize(&url).await?;
         Ok(time)
-    }
-}
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_products() {
-        let client = PublicClient::new();
-        let future = client.get_products();
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product() {
-        let client = PublicClient::new();
-        let future = client.get_product("MIR-EUR");
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_order_book_all() {
-        let client = PublicClient::new();
-        let future = client.get_product_order_book_all("MIR-EUR");
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_order_book_top50() {
-        let client = PublicClient::new();
-        let future = client.get_product_order_book_top50("MIR-EUR");
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_order_book() {
-        let client = PublicClient::new();
-        let future = client.get_product_order_book("MIR-EUR");
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_ticker() {
-        let client = PublicClient::new();
-        let future = client.get_product_ticker("MIR-EUR");
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_trades() {
-        let client = PublicClient::new();
-        let future = client.get_product_trades("MIR-EUR");
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_historic_rates() {
-        let client = PublicClient::new();
-        let future = client.get_product_historic_rates("MIR-EUR");
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_product_24hr_stats() {
-        let client = PublicClient::new();
-        let future = client.get_product_24hr_stats("BTC-USD");
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_currencies() {
-        let client = PublicClient::new();
-        let future = client.get_currencies();
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_currency() {
-        let client = PublicClient::new();
-        let future = client.get_currency("BTC");
-        let _json = futures::executor::block_on(future).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-    async fn test_get_time() {
-        let client = PublicClient::new();
-        let future = client.get_time();
-        let _json = futures::executor::block_on(future).unwrap();
     }
 }
