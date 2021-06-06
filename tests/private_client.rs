@@ -1,6 +1,5 @@
-use coinbase_client::{json::*, private_client::PrivateClient};
+use coinbase_client::private_client::*;
 use dotenv;
-use futures;
 use std::env;
 
 fn create_client() -> PrivateClient {
@@ -8,50 +7,104 @@ fn create_client() -> PrivateClient {
     let secret = env::var("SECRET").expect("Cant find api secret");
     let passphrase = env::var("PASSPHRASE").expect("Cant find api passphrase");
     let key = env::var("KEY").expect("Cant find api key");
-    PrivateClient::new(secret, passphrase, key)
+    PrivateClient::new_sandbox(secret, passphrase, key)
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_accounts() {
     let client = create_client();
-    let future = client.get_accounts();
-    let _json = futures::executor::block_on(future).unwrap();
-}
-#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-
-async fn test_place_order_limit() {
-    let order = Order::limit(
-        0.01,
-        100.0,
-        OrderSide::Buy,
-        "BTC-USD",
-        TimeInForce::GoodTillTime {
-            cancel_after: CancelAfter::Minute,
-            post_only: false,
-        },
-    );
-    let client = create_client();
-    let future = client.place_order(order);
-    let json = futures::executor::block_on(future).unwrap();
-    println!("{:?}", json);
+    let _json = client.get_accounts().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 
 async fn test_place_order_market_funds() {
-    let order = Order::market(SizeOrFunds::Funds(10.0), OrderSide::Buy, "BTC-USD");
+    let order = OrderBuilder::market(OrderSide::Buy, "BTC-USD", SizeOrFunds::Funds(10.00)).build();
     let client = create_client();
-    let future = client.place_order(order);
-    let json = futures::executor::block_on(future).unwrap();
-    println!("{:?}", json);
+    let _json = client.place_order(order).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 
 async fn test_place_order_market_size() {
-    let order = Order::market(SizeOrFunds::Size(10.0), OrderSide::Buy, "BTC-USD");
+    let order = OrderBuilder::market(OrderSide::Buy, "BTC-USD", SizeOrFunds::Size(0.02)).build();
     let client = create_client();
-    let future = client.place_order(order);
-    let json = futures::executor::block_on(future).unwrap();
-    println!("{:?}", json);
+    let _json = client.place_order(order).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+
+async fn test_place_order_limit() {
+    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
+    let client = create_client();
+    let _json = client.place_order(order).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+
+async fn test_place_order_stop() {
+    let order = OrderBuilder::stop(
+        OrderSide::Buy,
+        "BTC-USD",
+        36000.0,
+        1.0,
+        37000.0,
+        OrderStop::Loss,
+    )
+    .build();
+    let client = create_client();
+    let _json = client.place_order(order).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+
+async fn test_cancel_order() {
+    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
+    let client = create_client();
+    // place order
+    let order_to_cancel_id = client.place_order(order).await.unwrap();
+    // cancel order
+    let _canceled_order_id = client.cancel_order(&order_to_cancel_id).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+
+async fn test_cancel_orders() {
+    let client = create_client();
+    let _canceled_orders_ids = client.cancel_orders().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+
+async fn test_get_orders() {
+    let client = create_client();
+    let _orders = client.get_orders().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_get_order() {
+    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
+    let client = create_client();
+    // place order
+    let order_id = client.place_order(order).await.unwrap();
+    let _order = client.get_order(&order_id).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_get_fills_by_order_id() {
+    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
+    let client = create_client();
+    // place order
+    let order_id = client.place_order(order).await.unwrap();
+
+    let _fills = client.get_fills_by_order_id(&order_id).await.unwrap();
+    println!("{:?}", _fills);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_get_fills_by_product_id() {
+    let product_id = "BTC-USD";
+    let client = create_client();
+    let _fills = client.get_fills_by_product_id(&product_id).await.unwrap();
+    println!("{:?}", _fills);
 }

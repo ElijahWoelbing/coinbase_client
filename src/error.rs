@@ -1,21 +1,22 @@
+use serde::Deserialize;
+use serde_json;
 use std::error::Error as StdError;
 use std::fmt;
-
 #[derive(Debug)]
 pub struct Error {
-    kind: ErrorKind,
+    pub kind: ErrorKind,
 }
 
 impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.kind {
+        match &self.kind {
             ErrorKind::HTTP(_) => {
                 write!(f, "http error")
             }
-            ErrorKind::Status(status) => {
-                write!(f, "status error {}", status)
+            ErrorKind::Status(err) => {
+                write!(f, "status code: {}, message: {}", err.code, err.message)
             }
             ErrorKind::JSON(_) => {
                 write!(f, "json error")
@@ -45,9 +46,26 @@ impl Error {
         Self { kind }
     }
 }
+
 #[derive(Debug)]
 pub enum ErrorKind {
     HTTP(reqwest::Error),
-    Status(reqwest::StatusCode),
+    Status(StatusError),
     JSON(serde_json::Error),
+}
+
+#[derive(Debug)]
+pub struct StatusError {
+    pub code: u16,
+    pub message: String,
+}
+
+impl StatusError {
+    pub fn new(code: u16, message: String) -> Self {
+        Self { code, message }
+    }
+}
+#[derive(Deserialize)]
+pub struct ErrorMessage {
+    pub message: String
 }
