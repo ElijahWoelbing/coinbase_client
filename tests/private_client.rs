@@ -98,7 +98,6 @@ async fn test_get_fills_by_order_id() {
     let order_id = client.place_order(order).await.unwrap();
 
     let _fills = client.get_fills_by_order_id(&order_id).await.unwrap();
-    println!("{:?}", _fills);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
@@ -106,5 +105,32 @@ async fn test_get_fills_by_product_id() {
     let product_id = "BTC-USD";
     let client = create_client();
     let _fills = client.get_fills_by_product_id(&product_id).await.unwrap();
-    println!("{:?}", _fills);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_get_limits() {
+    let client = create_client();
+    let limits = client.get_limits().await.unwrap();
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+
+async fn test_get_deposits() {
+    let client = create_client();
+    let limits = client
+        .get_deposits(
+            Some(DepositType::InternalDeposite),
+            Some("f9783e6f-1874-402c-80dd-7eb1b323e23e"),
+            Some(BeforeOrAfter::Before),
+            Some(1),
+        )
+        .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+
+async fn test_get_deposit() {
+    let client = create_client();
+    let limits = client
+        .get_deposit("80259339-7bf9-498f-8200-ddbd32a1c545")
+        .await;
 }

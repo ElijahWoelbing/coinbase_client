@@ -28,9 +28,9 @@ where
     Ok(serde_json::value::from_value::<T>(value)?)
 }
 
-struct f64Visitor;
+struct F64visitor;
 
-impl<'de> de::Visitor<'de> for f64Visitor {
+impl<'de> de::Visitor<'de> for F64visitor {
     type Value = f64;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -66,5 +66,5 @@ pub(crate) fn deserialize_f64<'de, D>(d: D) -> Result<f64, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    d.deserialize_str(f64Visitor)
+    d.deserialize_str(F64visitor)
 }

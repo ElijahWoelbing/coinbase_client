@@ -7,6 +7,8 @@ use reqwest;
 use serde::{self, Deserialize};
 use std::time::{SystemTime, SystemTimeError};
 
+pub type ExchangeLimits = serde_json::Value;
+pub type Deposit = serde_json::Value;
 /// `PrivateClient` requires authentication and provide access to placing orders and other account information
 pub struct PrivateClient {
     reqwest_client: reqwest::Client,
@@ -222,6 +224,93 @@ impl PrivateClient {
             .get(&format!("/fills?product_id={}", product_id))
             .await?)
     }
+
+    /// get information on your payment method transfer limits, as well as buy/sell limits per currency
+    pub async fn get_limits(&self) -> Result<ExchangeLimits, Error> {
+        Ok(self.get(&format!("/users/self/exchange-limits")).await?)
+    }
+
+    /// get deposits from the profile of the API key, in descending order by created time
+    /// <br>
+    /// **optional parameters**
+    /// *deposit_type*: set to deposit or internal_deposit (transfer between portfolios)
+    /// <br>
+    /// <br>
+    /// *profile_id*: limit list of deposits to this profile_id. By default, it retrieves deposits using default profile
+    /// <br>
+    /// <br>
+    /// *before*: if before is set, then it returns deposits created after the before timestamp, sorted by oldest creation date
+    /// <br>
+    /// <br>
+    /// *after*: if after is set, then it returns deposits created before the after timestamp, sorted by newest
+    /// <br>
+    /// <br>
+    /// *limit*: truncate list to this many deposits, capped at 100. Default is 100.
+    pub async fn get_deposits(
+        &self,
+        deposit_type: Option<DepositType>,
+        profile_id: Option<&str>,
+        before_or_after: Option<BeforeOrAfter>,
+        limit: Option<u8>,
+    ) -> Result<Vec<Deposit>, Error> {
+        let mut url = String::from("/transfers/");
+        let mut appended = false;
+        if let Some(n) = deposit_type {
+            appended = true;
+            match n {
+                DepositType::Deposit => url.push_str("?type=deposit"),
+                DepositType::InternalDeposite => url.push_str("?type=deposit"),
+            }
+        }
+        if let Some(n) = profile_id {
+            if appended == false {
+                appended = true;
+                url.push_str(&format!("?profile_id={}", n))
+            } else {
+                url.push_str(&format!("&profile_id={}", n));
+            }
+        }
+        if let Some(n) = before_or_after {
+            if appended == false {
+                appended = true;
+                url.push_str("?")
+            } else {
+                url.push_str("&");
+            }
+            match n {
+                BeforeOrAfter::Before => url.push_str("before"),
+                BeforeOrAfter::After => url.push_str("after"),
+            }
+        }
+        if let Some(mut n) = limit {
+            if n > 100 {
+                n = 100;
+            }
+            if appended == false {
+                appended = true;
+                url.push_str(&format!("?limit={}", n))
+            } else {
+                url.push_str(&format!("&limit={}", n));
+            }
+        }
+
+        Ok(self.get(&url).await?)
+    }
+
+    /// get information on a single deposit
+    pub async fn get_deposit(&self, transfer_id: &str) -> Result<Deposit, Error> {
+        Ok(self.get(&format!("/transfers/{}", transfer_id)).await?)
+    }
+}
+
+pub enum DepositType {
+    Deposit,
+    InternalDeposite,
+}
+
+pub enum BeforeOrAfter {
+    Before,
+    After,
 }
 
 #[derive(serde::Deserialize, Debug)]
