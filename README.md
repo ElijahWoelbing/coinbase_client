@@ -18,7 +18,7 @@ async fn main() {
     let secret = "SECRET";
     let passphrase = "PASSPHRASE";
     let key = "KEY";
-    let client = PrivateClient::new_sandbox(secret, passphrase, key)
+    let client = PrivateClient::new(secret, passphrase, key)
     let order = OrderBuilder::market(OrderSide::Buy, "BTC-USD", SizeOrFunds::Size(0.02)).build();
     let order_id = client.place_order(order).await.unwrap();
 }
