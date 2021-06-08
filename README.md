@@ -11,15 +11,13 @@ Rust library for Coinbase's Pro API.
 
 Requires [Tokio](https://github.com/tokio-rs/tokio) runtime
 ```
-use coinbase_client::public_client::PublicClient;
+use coinbase_client::private_client::*;
 
+// placing a market order
 #[tokio::main] 
 async fn main() {
-    let secret = "SECRET";
-    let passphrase = "PASSPHRASE";
-    let key = "KEY";
-    let client = PrivateClient::new(secret, passphrase, key)
+    let client = PrivateClient::new("YOUR_API_SECRET", "YOUR_API_PASSPHRASE", "YOUR_API_KEY")
     let order = OrderBuilder::market(OrderSide::Buy, "BTC-USD", SizeOrFunds::Size(0.02)).build();
-    let order_id = client.place_order(order).await.unwrap();
+    let order_id = client.place_order(order).await.expect("unable to place order");
 }
 ```
