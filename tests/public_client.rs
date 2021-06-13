@@ -2,72 +2,78 @@ use coinbase_client::public_client::*;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_products() {
-    let client = PublicClient::new();
-    let _json = client.get_products().await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let products = client.get_products().await.unwrap();
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product() {
-    let client = PublicClient::new();
-    let _json = client.get_product("MIR-EUR").await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let product = client.get_product("BTC-USD").await.unwrap();
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_order_book_all() {
-    let client = PublicClient::new();
-    let _json = client.get_product_order_book_all("MIR-EUR").await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let order_book = client.get_product_order_book_all("BTC-USD").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_order_book_top50() {
-    let client = PublicClient::new();
-    let _json = client
-        .get_product_order_book_top50("MIR-EUR")
+    let client = PublicClient::new_sandbox();
+    let order_book = client
+        .get_product_order_book_top50("BTC-USD")
         .await
         .unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_order_book() {
-    let client = PublicClient::new();
-    let _json = client.get_product_order_book("MIR-EUR").await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let order_book = client.get_product_order_book("BTC-USD").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_ticker() {
-    let client = PublicClient::new();
-    let _json = client.get_product_ticker("MIR-EUR").await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let ticker = client.get_product_ticker("BTC-USD").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_trades() {
-    let client = PublicClient::new();
-    let _json = client.get_product_trades("MIR-EUR").await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let trades = client
+        .get_product_trades("BTC-USD", Some(83162), Some(83173), Some(100))
+        .await
+        .unwrap();
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_historic_rates() {
-    let client = PublicClient::new();
-    let _json = client.get_product_historic_rates("MIR-EUR").await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let historical_rates = client
+        .get_product_historic_rates("BTC-USD", None, None, Some(Granularity::OneMinute))
+        .await
+        .unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_24hr_stats() {
-    let client = PublicClient::new();
-    let _json = client.get_product_24hr_stats("BTC-USD").await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let twenty_four_hour_stats = client.get_product_24hr_stats("BTC-USD").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_currencies() {
-    let client = PublicClient::new();
-    let _json = client.get_currencies().await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let currencies = client.get_currencies().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_currency() {
-    let client = PublicClient::new();
-    let _json = client.get_currency("BTC").await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let currency = client.get_currency("BTC").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_time() {
-    let client = PublicClient::new();
-    let _json = client.get_time().await.unwrap();
+    let client = PublicClient::new_sandbox();
+    let time = client.get_time().await.unwrap();
 }

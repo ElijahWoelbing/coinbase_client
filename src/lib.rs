@@ -6,10 +6,14 @@ pub mod private_client;
 pub mod public_client;
 
 use self::error::{Error, ErrorKind, ErrorMessage, StatusError};
+use chrono::{DateTime, TimeZone, Utc};
 use serde::{self, de};
+use serde::{Deserialize, Deserializer};
 use std::fmt;
 
 pub(crate) const COINBASE_API_URL: &'static str = "https://api.pro.coinbase.com";
+pub(crate) const COINBASE_SANDBOX_API_URL: &'static str =
+    "https://api-public.sandbox.pro.coinbase.com";
 
 // derserilize to a type that impls the Deserialize trait
 pub(crate) async fn deserialize_response<T>(response: reqwest::Response) -> Result<T, Error>
@@ -28,43 +32,33 @@ where
     Ok(response.json::<T>().await?)
 }
 
-struct F64visitor;
-
-impl<'de> de::Visitor<'de> for F64visitor {
-    type Value = f64;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "This Visitor expects to receive a str or string that will parse to a float"
-        )
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        match v.parse::<f64>() {
-            Ok(n) => Ok(n),
-            Err(e) => Err(E::custom(format!("Parse error {} for {}", e, v))),
-        }
-    }
-
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        match v.parse::<f64>() {
-            Ok(n) => Ok(n),
-            Err(e) => Err(E::custom(format!("Parse error {} for {}", e, v))),
-        }
-    }
-}
-
-/// deserializes a f64 compatable str or string to a f64
-pub(crate) fn deserialize_f64<'de, D>(d: D) -> Result<f64, D::Error>
+// deserializes a f64 compatable str to a f64
+pub(crate) fn deserialize_to_f64<'de, D>(deserializer: D) -> Result<f64, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    d.deserialize_str(F64visitor)
+    let s = String::deserialize(deserializer)?;
+    s.parse::<f64>().map_err(serde::de::Error::custom)
+}
+
+// deserializes a ISO 8601 / RFC 3339 date & time format str to a DateTime<Utc>
+pub(crate) fn deserialize_to_date<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Utc.datetime_from_str(&s, "%+")
+        .map_err(serde::de::Error::custom)
+}
+
+pub(crate) fn deserialize_option_to_date<'de, D>(
+    deserializer: D,
+) -> Result<Option<DateTime<Utc>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper(#[serde(deserialize_with = "deserialize_to_date")] DateTime<Utc>);
+    let v = Option::deserialize(deserializer)?;
+    Ok(v.map(|Wrapper(a)| a))
 }

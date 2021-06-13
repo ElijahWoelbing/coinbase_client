@@ -13,7 +13,7 @@ fn create_client() -> PrivateClient {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_accounts() {
     let client = create_client();
-    let account = client.get_accounts().await.unwrap();
+    let _account = client.get_accounts().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
@@ -102,13 +102,13 @@ async fn test_get_fills_by_product_id() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_limits() {
     let client = create_client();
-    let limits = client.get_limits().await.unwrap();
+    let _limits = client.get_limits().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_deposits() {
     let client = create_client();
-    let deposits = client
+    let _deposits = client
         .get_deposits(
             Some(DepositType::InternalDeposite),
             Some("f9783e6f-1874-402c-80dd-7eb1b323e23e"),
@@ -121,7 +121,7 @@ async fn test_get_deposits() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_deposit() {
     let client = create_client();
-    let limits = client
+    let _limits = client
         .get_deposit("80259339-7bf9-498f-8200-ddbd32a1c545")
         .await;
 }
@@ -129,19 +129,19 @@ async fn test_get_deposit() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_payment_methods() {
     let client = create_client();
-    let payment_methods = client.get_payment_methods().await.unwrap();
+    let _payment_methods = client.get_payment_methods().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_coinbase_accounts() {
     let client = create_client();
-    let accounts = client.get_coinbase_accounts().await.unwrap();
+    let _accounts = client.get_coinbase_accounts().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_deposit_funds() {
     let client = create_client();
-    let deposit = client
+    let _deposit = client
         .deposit_funds(10.00, "USD", "1b4b4fbc-8071-5e7c-b36e-a1c589a2cf20")
         .await
         .unwrap();
@@ -150,7 +150,7 @@ async fn test_deposit_funds() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_deposit_from_coinbase() {
     let client = create_client();
-    let deposit = client
+    let _deposit = client
         .deposit_funds_from_coinbase(10.00, "BTC", "95671473-4dda-5264-a654-fc6923e8a334")
         .await
         .unwrap();
@@ -159,7 +159,7 @@ async fn test_deposit_from_coinbase() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_generate_crypto_address() {
     let client = create_client();
-    let address = client
+    let _address = client
         .generate_crypto_deposit_address("95671473-4dda-5264-a654-fc6923e8a334")
         .await
         .unwrap();
@@ -168,7 +168,7 @@ async fn test_generate_crypto_address() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_withdrawls() {
     let client = create_client();
-    let withdrawls = client
+    let _withdrawls = client
         .get_withdrawls(
             Some(WithdrawType::InternalWithdraw),
             Some("f9783e6f-1874-402c-80dd-7eb1b323e23e"),
@@ -182,16 +182,22 @@ async fn test_get_withdrawls() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_withdrawl() {
     let client = create_client();
-    let withdrawl = client
+    let _withdrawl = client
         .get_withdrawl("80259339-7bf9-498f-8200-ddbd32a1c545")
         .await
         .unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-async fn test_estimate_fees() {
+async fn test_get_fees() {
     let client = create_client();
-    let fee = client
+    let _fees = client.get_fees().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_get_fee_estimate_() {
+    let client = create_client();
+    let _fee = client
         .get_fee_estimate("ETH", "0x82289D45Ee8E806C63Ba0DC94a22d4238525d815")
         .await
         .unwrap();
@@ -200,7 +206,7 @@ async fn test_estimate_fees() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_stablecoin_conversion() {
     let client = create_client();
-    let convertion = client
+    let _convertion = client
         .convert_stablecoin("USD", "USDC", 10.00)
         .await
         .unwrap();
@@ -214,16 +220,16 @@ async fn test_report() {
         "2021-06-11T02:48:15.853Z",
         "1f6a7175-a89c-494f-986d-af9987e6dd69",
     )
-    .email("email_address")
+    .email("")
     .format(Format::CSV)
     .build();
-    let response = client.create_report(report).await.unwrap();
+    let _response = client.create_report(report).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_report() {
     let client = create_client();
-    let report = client
+    let _report = client
         .get_report("d4a3e847-b618-454d-bcb3-e77b0ad61600")
         .await
         .unwrap();
@@ -232,24 +238,22 @@ async fn test_get_report() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_profiles() {
     let client = create_client();
-    let profiles = client.get_profiles().await.unwrap();
-    println!("{:?}", profiles);
+    let _profiles = client.get_profiles().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_profile() {
     let client = create_client();
-    let profile = client
+    let _profile = client
         .get_profile("e1d7731f-b7e2-4285-b711-eeec76fc2aff")
         .await
         .unwrap();
-    println!("{:?}", profile);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_create_profile_transfer() {
     let client = create_client();
-    let transfer_info = client
+    let ok = client
         .create_profile_transfer(
             "e1d7731f-b7e2-4285-b711-eeec76fc2aff",
             "3510ac37-1a99-4c9c-9865-15f1bc5a832e",
@@ -258,5 +262,5 @@ async fn test_create_profile_transfer() {
         )
         .await
         .unwrap();
-    println!("{:?}", transfer_info);
+    assert_eq!(ok, "OK")
 }

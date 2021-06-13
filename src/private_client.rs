@@ -1,16 +1,16 @@
-use super::{deserialize_f64, deserialize_response, COINBASE_API_URL};
+use super::{
+    deserialize_option_to_date, deserialize_response, deserialize_to_date, deserialize_to_f64,
+    COINBASE_API_URL, COINBASE_SANDBOX_API_URL,
+};
 use crate::error::{Error, ErrorKind, ErrorMessage, StatusError};
 use base64;
+use chrono::{DateTime, Utc};
 use core::f64;
 use crypto::{self, mac::Mac};
 use reqwest;
-use serde::{
-    self,
-    de::{self, Visitor},
-    Deserialize,
-};
+use serde::{self, Deserialize, Serialize};
 use std::{
-    fmt,
+    slice::RSplit,
     time::{SystemTime, SystemTimeError},
 };
 
@@ -42,10 +42,10 @@ impl PrivateClient {
     pub fn new_sandbox(secret: String, passphrase: String, key: String) -> Self {
         Self {
             reqwest_client: reqwest::Client::new(),
-            secret, // shared secret
+            secret,
             key,
             passphrase,
-            url: "https://api-public.sandbox.pro.coinbase.com",
+            url: COINBASE_SANDBOX_API_URL,
         }
     }
 
@@ -60,7 +60,6 @@ impl PrivateClient {
             .headers(headers)
             .send()
             .await?;
-
         deserialize_response::<T>(response).await
     }
 
@@ -193,7 +192,7 @@ impl PrivateClient {
 
     /// you can place three types of orders: limit, market and stop [Overview of order types and settings](https://help.coinbase.com/en/pro/trading-and-funding/orders/overview-of-order-types-and-settings-stop-limit-market)
     pub async fn place_order(&self, order: Order) -> Result<String, Error> {
-        #[derive(serde::Deserialize, Debug)]
+        #[derive(Deserialize, Debug)]
         pub struct OrderID {
             pub id: String,
         }
@@ -208,7 +207,6 @@ impl PrivateClient {
         Ok(self.delete(&format!("/orders/{}", order_id)).await?)
     }
 
-    // IMPORTANT not tested as OID is not fully supported yet
     /// cancel order specified by order OID
     pub async fn cancel_order_by_oid(&self, oid: &str) -> Result<String, Error> {
         Ok(self.delete(&format!("/orders/client:{}", oid)).await?)
@@ -454,6 +452,66 @@ impl PrivateClient {
         Ok(self.get(&format!("/transfers/{}", transfer_id)).await?)
     }
 
+    /// withdraw funds to a coinbase account
+    pub async fn withdraw_to_coinbase(
+        &self,
+        amount: f64,
+        currency: &str,
+        coinbase_account_id: &str,
+    ) -> Result<WithdrawInfo, Error> {
+        Ok(self
+            .post_and_deserialize(
+                "/withdrawals/coinbase-account",
+                Some(serde_json::json!({
+                        "amount": amount,
+                        "currency": currency,
+                        "coinbase_account_id": coinbase_account_id
+                })),
+            )
+            .await?)
+    }
+
+    /// withdraw funds to a crypto address.
+    /// <br>
+    /// <br>
+    /// amount: The amount to withdraw
+    /// <br>
+    /// currency: The type of currency
+    /// <br>
+    /// crypto_address: A crypto address of the recipient
+    /// <br>
+    /// destination_tag: A destination tag for currencies that support one
+    /// <br>
+    /// no_destination_tag:	A boolean flag to opt out of using a destination tag for currencies that support one. This is required when not providing a destination tag.
+    /// <br>
+    /// add_network_fee_to_total: A boolean flag to add the network fee on top of the amount. If this is blank, it will default to deducting the network fee from the amount.
+    pub async fn withdraw_to_crypto_address(
+        &self,
+        amount: f64,
+        currency: &str,
+        crypto_address: &str,
+        destination_tag: Option<&str>,
+        no_destination_tag: Option<bool>,
+        add_network_fee_to_total: Option<bool>,
+    ) -> Result<JsonValue, Error> {
+        Ok(self
+            .post_and_deserialize(
+                "/withdrawals/coinbase-account",
+                Some(serde_json::json!({
+                        "amount": amount,
+                        "currency": currency,
+                        "crypto_address": crypto_address,
+
+                })),
+            )
+            .await?)
+    }
+
+    /// get your current maker & taker fee rates, as well as your 30-day trailing volume
+    pub async fn get_fees(&self) -> Result<Fees, Error> {
+        Ok(self.get("/fees").await?)
+    }
+
     /// get the network fee estimate when sending to the given address
     pub async fn get_fee_estimate(
         &self,
@@ -495,7 +553,7 @@ impl PrivateClient {
     //<br>
     //<br>
     /// reports provide batches of historic information about your profile in various human and machine readable forms
-    pub async fn create_report<'a>(&self, report: Report) -> Result<JsonValue, Error> {
+    pub async fn create_report<'a>(&self, report: Report) -> Result<ReportInfo, Error> {
         Ok(self.post_and_deserialize("/reports", Some(report)).await?)
     }
 
@@ -503,17 +561,17 @@ impl PrivateClient {
     //<br>
     //<br>
     /// once a report request has been accepted for processing, the status becomes available
-    pub async fn get_report(&self, report_id: &str) -> Result<JsonValue, Error> {
+    pub async fn get_report(&self, report_id: &str) -> Result<ReportInfo, Error> {
         Ok(self.get(&format!("/reports/{}", report_id)).await?)
     }
 
     /// get your profiles
-    pub async fn get_profiles(&self) -> Result<JsonValue, Error> {
+    pub async fn get_profiles(&self) -> Result<Vec<Profile>, Error> {
         Ok(self.get("/profiles").await?)
     }
 
     /// get a single profile by profile id
-    pub async fn get_profile(&self, profile_id: &str) -> Result<JsonValue, Error> {
+    pub async fn get_profile(&self, profile_id: &str) -> Result<Profile, Error> {
         Ok(self.get(&format!("/profiles/{}", profile_id)).await?)
     }
 
@@ -537,8 +595,7 @@ impl PrivateClient {
                     }
                 )),
             )
-            .await
-            .unwrap();
+            .await?;
         let status = response.status();
         if !status.is_success() {
             let error_message = response.json::<ErrorMessage>().await?;
@@ -547,7 +604,7 @@ impl PrivateClient {
                 error_message.message,
             ))));
         }
-        Ok(String::from("OK"))
+        Ok(response.text().await?)
     }
 
     /// get cryptographically signed prices ready to be posted on-chain using Open Oracle smart contracts.
@@ -722,10 +779,10 @@ pub enum BeforeOrAfter {
     After,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct StablecoinConversion {
     id: String,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     amount: f64,
     from_account_id: String,
     to_account_id: String,
@@ -733,31 +790,39 @@ pub struct StablecoinConversion {
     to: String,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Account {
     pub id: String,
     pub currency: String,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     pub balance: f64,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     pub available: f64,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     pub hold: f64,
     pub profile_id: String,
     pub trading_enabled: bool,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct DepositInfo {
     id: String,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     amount: f64,
     currency: String,
     payout_at: Option<String>,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct WithdrawInfo {
+    id: String,
+    #[serde(deserialize_with = "deserialize_to_f64")]
+    amount: f64,
+    currency: String,
+}
+
 /// A `OrderBuilder` should be used to create a `Order` with  custom configuration.
-#[derive(serde::Serialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Order {
     r#type: String,
     size: Option<f64>,
@@ -1031,9 +1096,9 @@ impl LimitOptions for OrderBuilder {
 #[derive(Debug, Deserialize)]
 pub struct OrderInfo {
     id: String,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     price: f64,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     size: f64,
     product_id: String,
     side: String,
@@ -1041,12 +1106,13 @@ pub struct OrderInfo {
     r#type: String,
     time_in_force: String,
     post_only: bool,
-    created_at: String,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_date")]
+    created_at: DateTime<Utc>,
+    #[serde(deserialize_with = "deserialize_to_f64")]
     fill_fees: f64,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     filled_size: f64,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     executed_value: f64,
     status: String,
     settled: bool,
@@ -1056,17 +1122,63 @@ pub struct OrderInfo {
 pub struct Fill {
     trade_id: u64,
     product_id: String,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     price: f64,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     size: f64,
     order_id: String,
     created_at: String,
     liquidity: String,
-    #[serde(deserialize_with = "deserialize_f64")]
+    #[serde(deserialize_with = "deserialize_to_f64")]
     fee: f64,
     settled: bool,
     side: String,
+}
+
+/// a structure that represents your current maker & taker fee rates, as well as your 30-day trailing volume
+#[derive(Debug, Deserialize)]
+pub struct Fees {
+    #[serde(deserialize_with = "deserialize_to_f64")]
+    maker_fee_rate: f64,
+    #[serde(deserialize_with = "deserialize_to_f64")]
+    taker_fee_rate: f64,
+    #[serde(deserialize_with = "deserialize_to_f64")]
+    usd_volume: f64,
+}
+
+/// a structure represents a single profile
+#[derive(Debug, Deserialize)]
+pub struct Profile {
+    id: String,
+    user_id: String,
+    name: String,
+    active: bool,
+    is_default: bool,
+    #[serde(deserialize_with = "deserialize_to_date")]
+    created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReportInfo {
+    id: String,
+    r#type: String,
+    status: String,
+    #[serde(default, deserialize_with = "deserialize_option_to_date")]
+    created_at: Option<DateTime<Utc>>,
+    #[serde(default, deserialize_with = "deserialize_option_to_date")]
+    completed_at: Option<DateTime<Utc>>,
+    #[serde(default, deserialize_with = "deserialize_option_to_date")]
+    expires_at: Option<DateTime<Utc>>,
+    file_url: Option<String>,
+    params: Option<ReportParams>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReportParams {
+    #[serde(deserialize_with = "deserialize_to_date")]
+    start_date: DateTime<Utc>,
+    #[serde(deserialize_with = "deserialize_to_date")]
+    end_date: DateTime<Utc>,
 }
 
 #[derive(Clone, Copy, Debug)]
