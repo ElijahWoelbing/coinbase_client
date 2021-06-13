@@ -1,7 +1,7 @@
 # Coinbase Client [![Latest Version]][crates.io]
 Rust library for Coinbase's Pro API.
 
-[Documentation](https://docs.rs/coinbase-client/0.1.1/coinbase_client/)
+[Documentation](https://docs.rs/coinbase-client/0.1.2/coinbase_client/)
 
 [Latest Version]: https://img.shields.io/badge/Version-0.1.2-green
 [crates.io]: https://crates.io/crates/coinbase_client
