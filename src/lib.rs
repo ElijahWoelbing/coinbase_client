@@ -17,15 +17,15 @@ where
     T: serde::de::DeserializeOwned,
 {
     let status = response.status();
-    let value: serde_json::value::Value = response.json().await?;
     if !status.is_success() {
-        let error_message: ErrorMessage = serde_json::value::from_value(value)?;
+        let error_message = response.json::<ErrorMessage>().await?;
         return Err(Error::new(ErrorKind::Status(StatusError::new(
             status.as_u16(),
             error_message.message,
         ))));
     }
-    Ok(serde_json::value::from_value::<T>(value)?)
+
+    Ok(response.json::<T>().await?)
 }
 
 struct F64visitor;
