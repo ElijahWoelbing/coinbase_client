@@ -1,6 +1,6 @@
 [package]
 name = "coinbase-client"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Elijah Woelbing <woelbingelijah@gmail.com>"]
 edition = "2018"
 description = "asynchronous library for the Coinbase's Pro API"
