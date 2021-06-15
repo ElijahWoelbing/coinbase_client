@@ -13,7 +13,16 @@ fn create_client() -> PrivateClient {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_accounts() {
     let client = create_client();
-    let _account = client.get_accounts().await.unwrap();
+    let _accounts = client.get_accounts().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_get_account() {
+    let client = create_client();
+    let _account = client
+        .get_account("1f6a7175-a89c-494f-986d-af9987e6dd69")
+        .await
+        .unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]

@@ -1,18 +1,19 @@
-use super::{
+use crate::{
     deserialize_option_to_date, deserialize_response, deserialize_to_date, deserialize_to_f64,
     COINBASE_API_URL, COINBASE_SANDBOX_API_URL,
 };
+
+use super::Order;
+use super::Report;
+
 use crate::error::{Error, ErrorKind, ErrorMessage, StatusError};
 use base64;
 use chrono::{DateTime, Utc};
 use core::f64;
 use crypto::{self, mac::Mac};
 use reqwest;
-use serde::{self, Deserialize, Serialize};
-use std::{
-    slice::RSplit,
-    time::{SystemTime, SystemTimeError},
-};
+use serde::{self, Deserialize};
+use std::time::{SystemTime, SystemTimeError};
 
 /// alias for serde_json::Value used for data that cannot predictably be turned into its own struct
 pub type JsonValue = serde_json::Value;
@@ -63,6 +64,7 @@ impl PrivateClient {
         deserialize_response::<T>(response).await
     }
 
+    // deserialize to type T
     async fn post_and_deserialize<T, K>(&self, path: &str, body: Option<K>) -> Result<T, Error>
     where
         K: serde::Serialize,            // body must serialize
@@ -188,6 +190,20 @@ impl PrivateClient {
     pub async fn get_accounts(&self) -> Result<Vec<Account>, Error> {
         let accounts = self.get("/accounts").await?;
         Ok(accounts)
+    }
+
+    /// get trading account by account ID
+    pub async fn get_account(&self, account_id: &str) -> Result<Account, Error> {
+        let account = self.get(&format!("/accounts/{}", account_id)).await?;
+        Ok(account)
+    }
+
+    /// get trading account by account ID
+    pub async fn get_account_history(&self, account_id: &str) -> Result<Account, Error> {
+        let account = self
+            .get(&format!("/accounts/{}/ledger", account_id))
+            .await?;
+        Ok(account)
     }
 
     /// you can place three types of orders: limit, market and stop [Overview of order types and settings](https://help.coinbase.com/en/pro/trading-and-funding/orders/overview-of-order-types-and-settings-stop-limit-market)
@@ -501,7 +517,9 @@ impl PrivateClient {
                         "amount": amount,
                         "currency": currency,
                         "crypto_address": crypto_address,
-
+                        "destination_tag": destination_tag,
+                        "no_destination_tag": no_destination_tag,
+                        "add_network_fee_to_total": add_network_fee_to_total
                 })),
             )
             .await?)
@@ -613,162 +631,13 @@ impl PrivateClient {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct TransferStatus {
-    status: String,
-}
-
-#[derive(serde::Serialize, Debug)]
-pub struct Report {
-    r#type: String,
-    start_date: String,
-    end_date: String,
-    product_id: Option<String>,
-    account_id: Option<String>,
-    format: Format,
-    email: Option<String>,
-}
-
-impl Report {
-    pub fn fills_builder(
-        start_date: &str,
-        end_date: &str,
-        product_id: &str,
-    ) -> impl SharedReportOptions + FillsReportOptions {
-        ReportBuilder {
-            r#type: "fills".to_string(),
-            start_date: start_date.to_string(),
-            end_date: end_date.to_string(),
-            product_id: Some(product_id.to_string()),
-            account_id: None,
-            format: Format::PDF,
-            email: None,
-        }
-    }
-
-    pub fn account_builder(
-        start_date: &str,
-        end_date: &str,
-        account_id: &str,
-    ) -> impl SharedReportOptions + AccountReportOptions {
-        ReportBuilder {
-            r#type: "account".to_string(),
-            start_date: start_date.to_string(),
-            end_date: end_date.to_string(),
-            product_id: None,
-            account_id: Some(account_id.to_string()),
-            format: Format::PDF,
-            email: None,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ReportBuilder {
-    r#type: String,
-    start_date: String,
-    end_date: String,
-    product_id: Option<String>,
-    account_id: Option<String>,
-    format: Format,
-    email: Option<String>,
-}
-
-impl ReportBuilder {
-    pub fn fills(
-        start_date: &str,
-        end_date: &str,
-        product_id: &str,
-    ) -> impl SharedReportOptions + FillsReportOptions {
-        Self {
-            r#type: "fills".to_string(),
-            start_date: start_date.to_string(),
-            end_date: end_date.to_string(),
-            product_id: Some(product_id.to_string()),
-            account_id: None,
-            format: Format::PDF,
-            email: None,
-        }
-    }
-
-    pub fn account(
-        start_date: &str,
-        end_date: &str,
-        account_id: &str,
-    ) -> impl SharedReportOptions + AccountReportOptions {
-        Self {
-            r#type: "account".to_string(),
-            start_date: start_date.to_string(),
-            end_date: end_date.to_string(),
-            product_id: None,
-            account_id: Some(account_id.to_string()),
-            format: Format::PDF,
-            email: None,
-        }
-    }
-}
-
-pub trait FillsReportOptions {
-    fn account_id(self, account_id: &str) -> Self;
-}
-
-impl FillsReportOptions for ReportBuilder {
-    fn account_id(mut self, account_id: &str) -> Self {
-        self.account_id = Some(account_id.to_string());
-        self
-    }
-}
-pub trait AccountReportOptions {
-    fn product_id(self, product_id: &str) -> Self;
-}
-
-impl AccountReportOptions for ReportBuilder {
-    fn product_id(mut self, product_id: &str) -> Self {
-        self.product_id = Some(product_id.to_string());
-        self
-    }
-}
-pub trait SharedReportOptions {
-    fn format(self, format: Format) -> Self;
-    fn email(self, email: &str) -> Self;
-    fn build(self) -> Report;
-}
-
-impl SharedReportOptions for ReportBuilder {
-    fn format(mut self, format: Format) -> Self {
-        self.format = format;
-        self
-    }
-
-    fn email(mut self, email: &str) -> Self {
-        self.email = Some(email.to_string());
-        self
-    }
-
-    fn build(self) -> Report {
-        Report {
-            r#type: self.r#type,
-            start_date: self.start_date,
-            end_date: self.end_date,
-            product_id: self.product_id,
-            account_id: self.account_id,
-            format: self.format,
-            email: self.email,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Format {
-    PDF,
-    CSV,
-}
-
+/// Withdraw Type
 pub enum WithdrawType {
     Withdraw,
     InternalWithdraw,
 }
 
+/// Deposit Type
 pub enum DepositType {
     Deposit,
     InternalDeposite,
@@ -779,6 +648,7 @@ pub enum BeforeOrAfter {
     After,
 }
 
+/// Stablecoin Conversion
 #[derive(Deserialize, Debug)]
 pub struct StablecoinConversion {
     id: String,
@@ -790,6 +660,7 @@ pub struct StablecoinConversion {
     to: String,
 }
 
+/// Account
 #[derive(Deserialize, Debug)]
 pub struct Account {
     pub id: String,
@@ -802,6 +673,26 @@ pub struct Account {
     pub hold: f64,
     pub profile_id: String,
     pub trading_enabled: bool,
+}
+
+/// Account History
+#[derive(Deserialize, Debug)]
+pub struct AccountHistory {
+    id: String,
+    #[serde(deserialize_with = "deserialize_to_date")]
+    created_at: DateTime<Utc>,
+    #[serde(deserialize_with = "deserialize_to_f64")]
+    amount: f64,
+    #[serde(deserialize_with = "deserialize_to_f64")]
+    balance: f64,
+    r#type: String,
+    details: AccountHistoryDetails,
+}
+#[derive(Deserialize, Debug)]
+pub struct AccountHistoryDetails {
+    order_id: String,
+    trade_id: String,
+    product_id: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -819,278 +710,6 @@ pub struct WithdrawInfo {
     #[serde(deserialize_with = "deserialize_to_f64")]
     amount: f64,
     currency: String,
-}
-
-/// A `OrderBuilder` should be used to create a `Order` with  custom configuration.
-#[derive(Serialize, Debug)]
-pub struct Order {
-    r#type: String,
-    size: Option<f64>,
-    price: Option<f64>,
-    side: OrderSide,
-    client_oid: Option<String>,
-    self_trade_prevention: Option<SelfTradePrevention>,
-    time_in_force: Option<TimeInForce>,
-    cancel_after: Option<CancelAfter>,
-    post_only: Option<bool>,
-    funds: Option<f64>,
-    product_id: String,
-    stp: Option<String>,
-    stop: Option<OrderStop>,
-    stop_price: Option<f64>,
-}
-
-impl Order {
-    /// returns a `OrderBuilder` with requiered market-order parameters, equivalent OrderBuilder::market
-    pub fn market_builder(
-        side: OrderSide,
-        product_id: &str,
-        size_or_funds: SizeOrFunds,
-    ) -> impl SharedOptions {
-        OrderBuilder {
-            r#type: "market".to_string(),
-            size: match size_or_funds {
-                SizeOrFunds::Size(n) => Some(n),
-                _ => None,
-            },
-            price: None,
-            side,
-            client_oid: None,
-            self_trade_prevention: None,
-            time_in_force: None,
-            cancel_after: None,
-            post_only: None,
-            funds: match size_or_funds {
-                SizeOrFunds::Funds(n) => Some(n),
-                _ => None,
-            },
-            product_id: product_id.to_string(),
-            stp: None,
-            stop: None,
-            stop_price: None,
-        }
-    }
-
-    /// returns a `OrderBuilder` with requiered limit-order parameters, equivalent OrderBuilder::limit
-    pub fn limit_builder(
-        side: OrderSide,
-        product_id: &str,
-        price: f64,
-        size: f64,
-    ) -> impl LimitOptions + SharedOptions {
-        OrderBuilder {
-            r#type: "limit".to_string(),
-            size: Some(size),
-            price: Some(price),
-            side: side,
-            client_oid: None,
-            self_trade_prevention: None,
-            time_in_force: None,
-            cancel_after: None,
-            post_only: None,
-            funds: None,
-            product_id: product_id.to_string(),
-            stp: None,
-            stop: None,
-            stop_price: None,
-        }
-    }
-
-    /// returns a `OrderBuilder` with requiered stop-order parameters, equivalent OrderBuilder::stop
-    pub fn stop_builder(
-        side: OrderSide,
-        product_id: &str,
-        price: f64,
-        size: f64,
-        stop_price: f64,
-        stop: OrderStop,
-    ) -> impl SharedOptions {
-        OrderBuilder {
-            r#type: "limit".to_string(),
-            size: Some(size),
-            price: Some(price),
-            side: side,
-            client_oid: None,
-            self_trade_prevention: None,
-            time_in_force: None,
-            cancel_after: None,
-            post_only: None,
-            funds: None,
-            product_id: product_id.to_string(),
-            stp: None,
-            stop: Some(stop),
-            stop_price: Some(stop_price),
-        }
-    }
-}
-
-/// A `OrderBuilder` can be used to create a `Order` with custom configuration.
-/// <br>
-/// Confiuguration parameters details can be found [here](https://docs.pro.coinbase.com/#orders)
-pub struct OrderBuilder {
-    r#type: String,
-    size: Option<f64>,
-    price: Option<f64>,
-    side: OrderSide,
-    client_oid: Option<String>,
-    self_trade_prevention: Option<SelfTradePrevention>,
-    time_in_force: Option<TimeInForce>,
-    cancel_after: Option<CancelAfter>,
-    post_only: Option<bool>,
-    funds: Option<f64>,
-    product_id: String,
-    stp: Option<String>,
-    stop: Option<OrderStop>,
-    stop_price: Option<f64>,
-}
-
-impl OrderBuilder {
-    /// returns a `OrderBuilder` with requiered market-order parameters.
-    pub fn market(
-        side: OrderSide,
-        product_id: &str,
-        size_or_funds: SizeOrFunds,
-    ) -> impl SharedOptions {
-        Self {
-            r#type: "market".to_string(),
-            size: match size_or_funds {
-                SizeOrFunds::Size(n) => Some(n),
-                _ => None,
-            },
-            price: None,
-            side,
-            client_oid: None,
-            self_trade_prevention: None,
-            time_in_force: None,
-            cancel_after: None,
-            post_only: None,
-            funds: match size_or_funds {
-                SizeOrFunds::Funds(n) => Some(n),
-                _ => None,
-            },
-            product_id: product_id.to_string(),
-            stp: None,
-            stop: None,
-            stop_price: None,
-        }
-    }
-
-    /// returns a `OrderBuilder` with requiered limit-order parameters.
-    pub fn limit(
-        side: OrderSide,
-        product_id: &str,
-        price: f64,
-        size: f64,
-    ) -> impl LimitOptions + SharedOptions {
-        Self {
-            r#type: "limit".to_string(),
-            size: Some(size),
-            price: Some(price),
-            side: side,
-            client_oid: None,
-            self_trade_prevention: None,
-            time_in_force: None,
-            cancel_after: None,
-            post_only: None,
-            funds: None,
-            product_id: product_id.to_string(),
-            stp: None,
-            stop: None,
-            stop_price: None,
-        }
-    }
-
-    /// returns a `OrderBuilder` with requiered stop-order parameters.
-    pub fn stop(
-        side: OrderSide,
-        product_id: &str,
-        price: f64,
-        size: f64,
-        stop_price: f64,
-        stop: OrderStop,
-    ) -> impl SharedOptions {
-        Self {
-            r#type: "limit".to_string(),
-            size: Some(size),
-            price: Some(price),
-            side: side,
-            client_oid: None,
-            self_trade_prevention: None,
-            time_in_force: None,
-            cancel_after: None,
-            post_only: None,
-            funds: None,
-            product_id: product_id.to_string(),
-            stp: None,
-            stop: Some(stop),
-            stop_price: Some(stop_price),
-        }
-    }
-}
-
-/// 'SharedOptions' options can be used with market, limit and stop order types
-pub trait SharedOptions {
-    fn self_trade_prevention(self, self_trade_prevention: SelfTradePrevention) -> Self;
-    fn client_oid(self, client_oid: String) -> Self;
-    fn build(self) -> Order;
-}
-
-impl SharedOptions for OrderBuilder {
-    /// Sets the Orders self-trade behavior
-    fn self_trade_prevention(mut self, self_trade_prevention: SelfTradePrevention) -> Self {
-        self.self_trade_prevention = Some(self_trade_prevention);
-        self
-    }
-
-    /// Sets the Order ID to identify your order
-    fn client_oid(mut self, client_oid: String) -> Self {
-        self.client_oid = Some(client_oid);
-        self
-    }
-
-    /// Builds `Order`
-    fn build(self) -> Order {
-        Order {
-            r#type: self.r#type,
-            size: self.size,
-            price: self.price,
-            side: self.side,
-            client_oid: self.client_oid,
-            self_trade_prevention: self.self_trade_prevention,
-            time_in_force: self.time_in_force,
-            cancel_after: self.cancel_after,
-            post_only: self.post_only,
-            funds: self.funds,
-            product_id: self.product_id,
-            stp: self.stp,
-            stop: self.stop,
-            stop_price: self.stop_price,
-        }
-    }
-}
-
-/// Builder options for Limit Orders
-pub trait LimitOptions {
-    fn time_in_force(self, time_in_force: TimeInForce) -> Self;
-}
-
-impl LimitOptions for OrderBuilder {
-    /// This option provides guarantees about the lifetime of an Order
-    fn time_in_force(mut self, time_in_force: TimeInForce) -> Self {
-        match time_in_force {
-            TimeInForce::GoodTillTime {
-                cancel_after,
-                post_only,
-            } => {
-                self.cancel_after = Some(cancel_after);
-                self.post_only = Some(post_only);
-            }
-            TimeInForce::GoodTillCancel { post_only } => self.post_only = Some(post_only),
-            _ => {}
-        }
-        self.time_in_force = Some(time_in_force);
-        self
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -1116,6 +735,29 @@ pub struct OrderInfo {
     executed_value: f64,
     status: String,
     settled: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReportInfo {
+    id: String,
+    r#type: String,
+    status: String,
+    #[serde(default, deserialize_with = "deserialize_option_to_date")]
+    created_at: Option<DateTime<Utc>>,
+    #[serde(default, deserialize_with = "deserialize_option_to_date")]
+    completed_at: Option<DateTime<Utc>>,
+    #[serde(default, deserialize_with = "deserialize_option_to_date")]
+    expires_at: Option<DateTime<Utc>>,
+    file_url: Option<String>,
+    params: Option<ReportParams>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReportParams {
+    #[serde(deserialize_with = "deserialize_to_date")]
+    start_date: DateTime<Utc>,
+    #[serde(deserialize_with = "deserialize_to_date")]
+    end_date: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1156,164 +798,4 @@ pub struct Profile {
     is_default: bool,
     #[serde(deserialize_with = "deserialize_to_date")]
     created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ReportInfo {
-    id: String,
-    r#type: String,
-    status: String,
-    #[serde(default, deserialize_with = "deserialize_option_to_date")]
-    created_at: Option<DateTime<Utc>>,
-    #[serde(default, deserialize_with = "deserialize_option_to_date")]
-    completed_at: Option<DateTime<Utc>>,
-    #[serde(default, deserialize_with = "deserialize_option_to_date")]
-    expires_at: Option<DateTime<Utc>>,
-    file_url: Option<String>,
-    params: Option<ReportParams>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ReportParams {
-    #[serde(deserialize_with = "deserialize_to_date")]
-    start_date: DateTime<Utc>,
-    #[serde(deserialize_with = "deserialize_to_date")]
-    end_date: DateTime<Utc>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum OrderSide {
-    Buy,
-    Sell,
-}
-#[derive(Clone, Copy, Debug)]
-pub enum OrderStop {
-    Loss,  // Triggers when the last trade price changes to a value at or below the stop_price.
-    Entry, // Triggers when the last trade price changes to a value at or above the stop_price.
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum SizeOrFunds {
-    Size(f64),
-    Funds(f64),
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum TimeInForce {
-    GoodTillCancel {
-        post_only: bool,
-    },
-    GoodTillTime {
-        cancel_after: CancelAfter,
-        post_only: bool,
-    },
-    ImmediateOrCancel,
-    FillOrKill,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum CancelAfter {
-    Minute,
-    Hour,
-    Day,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum SelfTradePrevention {
-    DecreaseCancel,
-    CancelOldest,
-    CancelNewest,
-    CancelBoth,
-}
-
-impl serde::Serialize for SelfTradePrevention {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        match self {
-            Self::CancelBoth => serializer.serialize_str("cb"),
-            Self::DecreaseCancel => serializer.serialize_str("dc"),
-            Self::CancelOldest => serializer.serialize_str("co"),
-            Self::CancelNewest => serializer.serialize_str("cn"),
-        }
-    }
-}
-
-impl serde::Serialize for OrderStop {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        match self {
-            Self::Loss => serializer.serialize_str("loss"),
-            Self::Entry => serializer.serialize_str("entry"),
-        }
-    }
-}
-
-impl serde::Serialize for TimeInForce {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        match self {
-            Self::GoodTillCancel { post_only: _ } => serializer.serialize_str("GTC"),
-            Self::GoodTillTime {
-                cancel_after: _,
-                post_only: _,
-            } => serializer.serialize_str("GTT"),
-            Self::ImmediateOrCancel => serializer.serialize_str("IOC"),
-            Self::FillOrKill => serializer.serialize_str("FOK"),
-        }
-    }
-}
-
-impl serde::Serialize for CancelAfter {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        match self {
-            Self::Minute => serializer.serialize_str("min"),
-            Self::Hour => serializer.serialize_str("hour"),
-            Self::Day => serializer.serialize_str("day"),
-        }
-    }
-}
-
-impl serde::Serialize for OrderSide {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        match self {
-            Self::Buy => serializer.serialize_str("buy"),
-            Self::Sell => serializer.serialize_str("sell"),
-        }
-    }
-}
-
-impl serde::Serialize for SizeOrFunds {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        match *self {
-            Self::Size(size) => serializer.serialize_f64(size),
-            Self::Funds(funds) => serializer.serialize_f64(funds),
-        }
-    }
-}
-
-impl serde::Serialize for Format {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        match self {
-            Self::PDF => serializer.serialize_str("pdf"),
-            Self::CSV => serializer.serialize_str("csv"),
-        }
-    }
 }
