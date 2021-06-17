@@ -13,6 +13,7 @@ use core::f64;
 use crypto::{self, mac::Mac};
 use reqwest;
 use serde::{self, Deserialize};
+use std::str;
 use std::time::{SystemTime, SystemTimeError};
 
 /// alias for serde_json::Value used for data that cannot predictably be turned into its own struct
@@ -198,11 +199,49 @@ impl PrivateClient {
         Ok(account)
     }
 
-    /// get trading account by account ID
-    pub async fn get_account_history(&self, account_id: &str) -> Result<Account, Error> {
-        let account = self
-            .get(&format!("/accounts/{}/ledger", account_id))
-            .await?;
+    /// List account activity of the API key's profile.
+    /// <br>
+    /// Account activity either increases or decreases your account balance.
+    /// <br>
+    /// Items are paginated and sorted latest first
+    pub async fn get_account_history(
+        &self,
+        account_id: &str,
+        pagination: Option<Pagination>,
+    ) -> Result<Vec<AccountHistory>, Error> {
+        let url = format!(
+            "/accounts/{}/ledger{}",
+            account_id,
+            match pagination {
+                Some(n) => n.to_params(),
+                None => "".to_string(),
+            }
+        );
+        let account = self.get(&url).await?;
+        Ok(account)
+    }
+
+    /// Get holds of an account that belong to the same profile as the API key.
+    /// <br>
+    /// Holds are placed on an account for any active orders or pending withdraw requests.
+    /// <br>
+    /// As an order is filled, the hold amount is updated. If an order is canceled, any remaining hold is removed.
+    /// <br>
+    /// For a withdraw, once it is completed, the hold is removed.
+    pub async fn get_account_holds(
+        &self,
+        account_id: &str,
+        pagination: Option<Pagination>,
+    ) -> Result<Vec<Hold>, Error> {
+        let url = format!(
+            "/accounts/{}/holds{}",
+            account_id,
+            match pagination {
+                Some(n) => n.to_params(),
+                None => "".to_string(),
+            }
+        );
+        let account = self.get(&url).await?;
         Ok(account)
     }
 
@@ -234,8 +273,32 @@ impl PrivateClient {
     }
 
     /// get open orders from the profile that the API key belongs
-    pub async fn get_orders(&self) -> Result<Vec<OrderInfo>, Error> {
-        Ok(self.get("/orders").await?)
+    pub async fn get_orders(
+        &self,
+        order_status: Option<OrderStatus>,
+        pagination: Option<Pagination>,
+    ) -> Result<Vec<OrderInfo>, Error> {
+        let order_status_params = if let Some(n) = &order_status {
+            match n {
+                OrderStatus::Open => "status=open",
+                OrderStatus::Active => "status=active",
+                OrderStatus::Pending => "status=pending",
+                OrderStatus::OpenActive => "status=open&status=active",
+                OrderStatus::OpenPending => "status=open&status=pending",
+                OrderStatus::ActivePending => "status=active&status=pending",
+                OrderStatus::OpenActivePending => "status=open&status=active&status=pending",
+            }
+        } else {
+            ""
+        };
+
+        let url = match (pagination, order_status) {
+            (None, None) => "/orders".to_string(),
+            (None, Some(_)) => format!("/orders?{}", order_status_params),
+            (Some(n), None) => format!("/orders{}", n.to_params()),
+            (Some(n), Some(_)) => format!("/orders{}&{}", n.to_params(), order_status_params),
+        };
+        Ok(self.get(&url).await?)
     }
 
     /// get open order from the profile that the API key belongs
@@ -631,6 +694,71 @@ impl PrivateClient {
     }
 }
 
+pub struct Pagination {
+    before_id: Option<String>,
+    after_id: Option<String>,
+    limit: Option<u16>,
+}
+
+impl Pagination {
+    pub fn new(before_id: Option<&str>, after_id: Option<&str>, limit: Option<u16>) -> Self {
+        Self {
+            before_id: match before_id {
+                Some(n) => Some(n.to_string()),
+                None => None,
+            },
+            after_id: match after_id {
+                Some(n) => Some(n.to_string()),
+                None => None,
+            },
+            limit,
+        }
+    }
+
+    pub fn to_params(self) -> String {
+        let mut appended = false;
+        let mut s = String::new();
+        if let Some(n) = self.before_id {
+            s.push_str(&format!("?before={}", n));
+            appended = true;
+        }
+
+        if let Some(n) = self.after_id {
+            match appended {
+                true => s.push_str(&format!("&after={}", n)),
+                false => {
+                    s.push_str(&format!("?after={}", n));
+                    appended = true;
+                }
+            }
+        }
+
+        if let Some(mut n) = self.limit {
+            if n > 1000 {
+                n = 1000;
+            }
+            match appended {
+                true => s.push_str(&format!("&limit={}", n)),
+                false => {
+                    s.push_str(&format!("?limit={}", n));
+                }
+            }
+        }
+
+        s
+    }
+}
+
+pub enum OrderStatus {
+    Open,
+    Active,
+    Pending,
+    OpenActive,
+    OpenPending,
+    ActivePending,
+    OpenActivePending,
+}
+
 /// Withdraw Type
 pub enum WithdrawType {
     Withdraw,
@@ -688,11 +816,26 @@ pub struct AccountHistory {
     r#type: String,
     details: AccountHistoryDetails,
 }
+
+/// Account Hold
+#[derive(Deserialize, Debug)]
+pub struct Hold {
+    id: String,
+    account_id: String,
+    #[serde(deserialize_with = "deserialize_to_date")]
+    created_at: DateTime<Utc>,
+    #[serde(deserialize_with = "deserialize_to_date")]
+    updated_at: DateTime<Utc>,
+    amount: String,
+    r#type: String,
+    r#ref: String,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct AccountHistoryDetails {
-    order_id: String,
-    trade_id: String,
-    product_id: String,
+    order_id: Option<String>,
+    trade_id: Option<String>,
+    product_id: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

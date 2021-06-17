@@ -3,23 +3,23 @@ use coinbase_client::public_client::*;
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_products() {
     let client = PublicClient::new_sandbox();
-    let products = client.get_products().await.unwrap();
+    let _products = client.get_products().await.unwrap();
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product() {
     let client = PublicClient::new_sandbox();
-    let product = client.get_product("BTC-USD").await.unwrap();
+    let _product = client.get_product("BTC-USD").await.unwrap();
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_order_book_all() {
     let client = PublicClient::new_sandbox();
-    let order_book = client.get_product_order_book_all("BTC-USD").await.unwrap();
+    let _order_book = client.get_product_order_book_all("BTC-USD").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_order_book_top50() {
     let client = PublicClient::new_sandbox();
-    let order_book = client
+    let _order_book = client
         .get_product_order_book_top50("BTC-USD")
         .await
         .unwrap();
@@ -28,19 +28,19 @@ async fn test_get_product_order_book_top50() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_order_book() {
     let client = PublicClient::new_sandbox();
-    let order_book = client.get_product_order_book("BTC-USD").await.unwrap();
+    let _order_book = client.get_product_order_book("BTC-USD").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_ticker() {
     let client = PublicClient::new_sandbox();
-    let ticker = client.get_product_ticker("BTC-USD").await.unwrap();
+    let _ticker = client.get_product_ticker("BTC-USD").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_trades() {
     let client = PublicClient::new_sandbox();
-    let trades = client
+    let _trades = client
         .get_product_trades("BTC-USD", Some(83162), Some(83173), Some(100))
         .await
         .unwrap();
@@ -48,7 +48,7 @@ async fn test_get_product_trades() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_historic_rates() {
     let client = PublicClient::new_sandbox();
-    let historical_rates = client
+    let _historical_rates = client
         .get_product_historic_rates("BTC-USD", None, None, Some(Granularity::OneMinute))
         .await
         .unwrap();
@@ -57,23 +57,23 @@ async fn test_get_product_historic_rates() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_24hr_stats() {
     let client = PublicClient::new_sandbox();
-    let twenty_four_hour_stats = client.get_product_24hr_stats("BTC-USD").await.unwrap();
+    let _twenty_four_hour_stats = client.get_product_24hr_stats("BTC-USD").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_currencies() {
     let client = PublicClient::new_sandbox();
-    let currencies = client.get_currencies().await.unwrap();
+    let _currencies = client.get_currencies().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_currency() {
     let client = PublicClient::new_sandbox();
-    let currency = client.get_currency("BTC").await.unwrap();
+    let _currency = client.get_currency("BTC").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_time() {
     let client = PublicClient::new_sandbox();
-    let time = client.get_time().await.unwrap();
+    let _time = client.get_time().await.unwrap();
 }

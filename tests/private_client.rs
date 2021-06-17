@@ -14,6 +14,7 @@ fn create_client() -> PrivateClient {
 async fn test_get_accounts() {
     let client = create_client();
     let _accounts = client.get_accounts().await.unwrap();
+    println!("{:?}", _accounts);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
@@ -80,7 +81,7 @@ async fn test_cancel_orders() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_orders() {
     let client = create_client();
-    let _orders = client.get_orders().await.unwrap();
+    let _orders = client.get_orders(Some(OrderStatus::OpenActivePending), Some(Pagination::new(Some("2021-06-13T21:43:55.798452Z"), None, Some(10)))).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
@@ -195,6 +196,20 @@ async fn test_get_withdrawl() {
         .get_withdrawl("80259339-7bf9-498f-8200-ddbd32a1c545")
         .await
         .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_get_account_history() {
+    let client = create_client();
+    let _history = client.get_account_history("680f85f4-1a99-4108-93ce-a9066f9de246", Some(Pagination::new(Some("296227278"), None, None))).await.unwrap();
+    println!("{:?}", _history);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_get_account_holds() {
+    let client = create_client();
+    let _holds = client.get_account_holds("680f85f4-1a99-4108-93ce-a9066f9de246", Some(Pagination::new(None, None, None))).await.unwrap();
+    println!("{:?}", _holds);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
