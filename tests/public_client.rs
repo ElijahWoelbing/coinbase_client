@@ -41,10 +41,11 @@ async fn test_get_product_ticker() {
 async fn test_get_product_trades() {
     let client = PublicClient::new_sandbox();
     let _trades = client
-        .get_product_trades("BTC-USD", Some(83162), Some(83173), Some(100))
+        .get_product_trades("BTC-USD", None, Some("30898635"), Some(100))
         .await
         .unwrap();
 }
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_historic_rates() {
     let client = PublicClient::new_sandbox();

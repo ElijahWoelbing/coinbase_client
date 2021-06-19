@@ -62,3 +62,20 @@ where
     let v = Option::deserialize(deserializer)?;
     Ok(v.map(|Wrapper(a)| a))
 }
+
+pub(crate) fn configure_pagination(
+    before: Option<&str>,
+    after: Option<&str>,
+    limit: Option<u16>,
+) -> String {
+    match (before, after, limit) {
+        (None, None, None) => String::from(""),
+        (None, None, Some(l)) => format!("limit={}", l),
+        (None, Some(a), None) => format!("after={}", a),
+        (Some(b), None, None) => format!("before={}", b),
+        (None, Some(a), Some(l)) => format!("after={}&limit={}", a, l),
+        (Some(b), None, Some(l)) => format!("before={}&limit={}", b, l),
+        (Some(b), Some(a), None) => format!("before={}&after={}", b, a),
+        (Some(b), Some(a), Some(l)) => format!("before={}&after={}&limit={}", b, a, l),
+    }
+}

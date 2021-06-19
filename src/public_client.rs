@@ -2,7 +2,7 @@ use super::{
     deserialize_response, deserialize_to_date, deserialize_to_f64, COINBASE_API_URL,
     COINBASE_SANDBOX_API_URL,
 };
-use crate::error::Error;
+use crate::{configure_pagination, error::Error};
 use chrono::{DateTime, Utc};
 use reqwest;
 use serde;
@@ -26,6 +26,20 @@ impl PublicClient {
             reqwest_client: reqwest::Client::new(),
             url: COINBASE_SANDBOX_API_URL,
         }
+    }
+
+    async fn get_paginated<T>(
+        &self,
+        path: &str,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<T, Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let params = configure_pagination(before, after, limit);
+        self.get(&format!("{}{}", path, params)).await
     }
 
     async fn get<T>(&self, path: &str) -> Result<T, Error>
@@ -107,35 +121,13 @@ impl PublicClient {
     pub async fn get_product_trades(
         &self,
         id: &str,
-        before_pagination_id: Option<u64>,
-        after_pagination_id: Option<u64>,
+        before: Option<&str>,
+        after: Option<&str>,
         limit: Option<u16>,
     ) -> Result<Vec<Trade>, Error> {
-        let mut path = format!("/products/{}/trades", id);
-        let mut appended = false;
-        if let Some(n) = before_pagination_id {
-            appended = true;
-            path.push_str(&format!("?before={}", n))
-        }
-        if let Some(n) = after_pagination_id {
-            if appended {
-                path.push_str(&format!("&after={}", n))
-            } else {
-                appended = true;
-                path.push_str(&format!("?after={}", n))
-            }
-        }
-        if let Some(mut n) = limit {
-            if n > 1000 {
-                n = 1000;
-            }
-            if appended {
-                path.push_str(&format!("&limit={}", n))
-            } else {
-                path.push_str(&format!("?limit={}", n))
-            }
-        }
-        let trades: Vec<Trade> = self.get(&path).await?;
+        let trades: Vec<Trade> = self
+            .get_paginated(&format!("/products/{}/trades?", id), before, after, limit)
+            .await?;
         Ok(trades)
     }
 

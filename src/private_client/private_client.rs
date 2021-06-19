@@ -1,3 +1,4 @@
+use crate::configure_pagination;
 use crate::{
     deserialize_option_to_date, deserialize_response, deserialize_to_date, deserialize_to_f64,
     COINBASE_API_URL, COINBASE_SANDBOX_API_URL,
@@ -17,7 +18,7 @@ use std::str;
 use std::time::{SystemTime, SystemTimeError};
 
 /// alias for serde_json::Value used for data that cannot predictably be turned into its own struct
-pub type JsonValue = serde_json::Value;
+pub type Json = serde_json::Value;
 
 /// `PrivateClient` requires authentication and provide access to placing orders and other account information
 pub struct PrivateClient {
@@ -49,6 +50,21 @@ impl PrivateClient {
             passphrase,
             url: COINBASE_SANDBOX_API_URL,
         }
+    }
+
+    async fn get_paginated<T>(
+        &self,
+        path: &str,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<T, Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let params = configure_pagination(before, after, limit);
+        println!("{}{}", path, params);
+        self.get(&format!("{}{}", path, params)).await
     }
 
     async fn get<T>(&self, path: &str) -> Result<T, Error>
@@ -207,17 +223,18 @@ impl PrivateClient {
     pub async fn get_account_history(
         &self,
         account_id: &str,
-        pagination: Option<Pagination>,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
     ) -> Result<Vec<AccountHistory>, Error> {
-        let url = format!(
-            "/accounts/{}/ledger{}",
-            account_id,
-            match pagination {
-                Some(n) => n.to_params(),
-                None => "".to_string(),
-            }
-        );
-        let account = self.get(&url).await?;
+        let account = self
+            .get_paginated(
+                &format!("/accounts/{}/ledger?", account_id),
+                before,
+                after,
+                limit,
+            )
+            .await?;
         Ok(account)
     }
 
@@ -231,17 +248,18 @@ impl PrivateClient {
     pub async fn get_account_holds(
         &self,
         account_id: &str,
-        pagination: Option<Pagination>,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
     ) -> Result<Vec<Hold>, Error> {
-        let url = format!(
-            "/accounts/{}/holds{}",
-            account_id,
-            match pagination {
-                Some(n) => n.to_params(),
-                None => "".to_string(),
-            }
-        );
-        let account = self.get(&url).await?;
+        let account = self
+            .get_paginated(
+                &format!("/accounts/{}/holds?", account_id),
+                before,
+                after,
+                limit,
+            )
+            .await?;
         Ok(account)
     }
 
@@ -276,29 +294,27 @@ impl PrivateClient {
     pub async fn get_orders(
         &self,
         order_status: Option<OrderStatus>,
-        pagination: Option<Pagination>,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
     ) -> Result<Vec<OrderInfo>, Error> {
-        let order_status_params = if let Some(n) = &order_status {
-            match n {
-                OrderStatus::Open => "status=open",
-                OrderStatus::Active => "status=active",
-                OrderStatus::Pending => "status=pending",
-                OrderStatus::OpenActive => "status=open&status=active",
-                OrderStatus::OpenPending => "status=open&status=pending",
-                OrderStatus::ActivePending => "status=active&status=pending",
-                OrderStatus::OpenActivePending => "status=open&status=active&status=pending",
+        let path = match order_status {
+            Some(n) => {
+                let params = match n {
+                    OrderStatus::Open => "status=open",
+                    OrderStatus::Active => "status=active",
+                    OrderStatus::Pending => "status=pending",
+                    OrderStatus::OpenActive => "status=open&status=active",
+                    OrderStatus::OpenPending => "status=open&status=pending",
+                    OrderStatus::ActivePending => "status=active&status=pending",
+                    OrderStatus::OpenActivePending => "status=open&status=active&status=pending",
+                };
+                format!("/orders?{}&", params)
             }
-        } else {
-            ""
+            None => String::from("/orders?"),
         };
 
-        let url = match (pagination, order_status) {
-            (None, None) => "/orders".to_string(),
-            (None, Some(_)) => format!("/orders?{}", order_status_params),
-            (Some(n), None) => format!("/orders{}", n.to_params()),
-            (Some(n), Some(_)) => format!("/orders{}&{}", n.to_params(), order_status_params),
-        };
-        Ok(self.get(&url).await?)
+        Ok(self.get_paginated(&path, before, after, limit).await?)
     }
 
     /// get open order from the profile that the API key belongs
@@ -312,28 +328,49 @@ impl PrivateClient {
     }
 
     /// get recent fills by specified order_id of the API key's profile
-    pub async fn get_fills_by_order_id(&self, order_id: &str) -> Result<Vec<Fill>, Error> {
-        Ok(self.get(&format!("/fills?order_id={}", order_id)).await?)
+    pub async fn get_fill_by_order_id(
+        &self,
+        order_id: &str,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<Vec<Fill>, Error> {
+        Ok(self
+            .get_paginated(
+                &format!("/fills?order_id={}&", order_id),
+                before,
+                after,
+                limit,
+            )
+            .await?)
     }
 
     /// get recent fills by specified product_id of the API key's profile
-    pub async fn get_fills_by_product_id(&self, product_id: &str) -> Result<Vec<Fill>, Error> {
+    pub async fn get_fills_by_product_id(
+        &self,
+        product_id: &str,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<Vec<Fill>, Error> {
         Ok(self
-            .get(&format!("/fills?product_id={}", product_id))
+            .get_paginated(
+                &format!("/fills?product_id={}&", product_id),
+                before,
+                after,
+                limit,
+            )
             .await?)
     }
 
     /// get information on your payment method transfer limits, as well as buy/sell limits per currency
-    pub async fn get_limits(&self) -> Result<JsonValue, Error> {
+    pub async fn get_limits(&self) -> Result<Json, Error> {
         Ok(self.get(&format!("/users/self/exchange-limits")).await?)
     }
 
     /// get deposits from the profile of the API key, in descending order by created time
     /// <br>
     /// **optional parameters**
-    /// *deposit_type*: set to deposit or internal_deposit (transfer between portfolios)
-    /// <br>
-    /// <br>
     /// *profile_id*: limit list of deposits to this profile_id. By default, it retrieves deposits using default profile
     /// <br>
     /// <br>
@@ -346,61 +383,51 @@ impl PrivateClient {
     /// *limit*: truncate list to this many deposits, capped at 100. Default is 100.
     pub async fn get_deposits(
         &self,
-        deposit_type: Option<DepositType>,
         profile_id: Option<&str>,
-        before_or_after: Option<BeforeOrAfter>,
-        limit: Option<u8>,
-    ) -> Result<JsonValue, Error> {
-        let mut url = String::from("/transfers/");
-        let mut appended = false;
-        if let Some(n) = deposit_type {
-            appended = true;
-            match n {
-                DepositType::Deposit => url.push_str("?type=deposit"),
-                DepositType::InternalDeposite => url.push_str("?type=internal_deposit"),
-            }
-        }
-        if let Some(n) = profile_id {
-            if appended == false {
-                appended = true;
-                url.push_str(&format!("?profile_id={}", n))
-            } else {
-                url.push_str(&format!("&profile_id={}", n));
-            }
-        }
-        if let Some(n) = before_or_after {
-            if appended == false {
-                appended = true;
-                url.push_str("?")
-            } else {
-                url.push_str("&");
-            }
-            match n {
-                BeforeOrAfter::Before => url.push_str("before"),
-                BeforeOrAfter::After => url.push_str("after"),
-            }
-        }
-        if let Some(mut n) = limit {
-            if n > 100 {
-                n = 100;
-            }
-            if appended == false {
-                url.push_str(&format!("?limit={}", n))
-            } else {
-                url.push_str(&format!("&limit={}", n));
-            }
-        }
-
-        Ok(self.get(&url).await?)
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<Json, Error> {
+        let path = match profile_id {
+            Some(n) => format!("/transfers?type=deposit&profile_id={}&", n),
+            None => String::from("/transfers?type=deposit&"),
+        };
+        Ok(self.get_paginated(&path, before, after, limit).await?)
+    }
+    /// get internal deposits from the profile of the API key, in descending order by created time
+    /// <br>
+    /// **optional parameters**
+    /// *profile_id*: limit list of internal deposits to this profile_id. By default, it retrieves internal deposits using default profile
+    /// <br>
+    /// <br>
+    /// *before*: if before is set, then it returns internal deposits created after the before timestamp, sorted by oldest creation date
+    /// <br>
+    /// <br>
+    /// *after*: if after is set, then it returns internal deposits created before the after timestamp, sorted by newest
+    /// <br>
+    /// <br>
+    /// *limit*: truncate list to this many internal deposits, capped at 100. Default is 100.
+    pub async fn get_internal_deposits(
+        &self,
+        profile_id: Option<&str>,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<Json, Error> {
+        let path = match profile_id {
+            Some(n) => format!("/transfers?type=internal_deposit&profile_id={}&", n),
+            None => String::from("/transfers?type=internal_deposit&"),
+        };
+        Ok(self.get_paginated(&path, before, after, limit).await?)
     }
 
     /// get information on a single deposit
-    pub async fn get_deposit(&self, transfer_id: &str) -> Result<JsonValue, Error> {
+    pub async fn get_deposit(&self, transfer_id: &str) -> Result<Json, Error> {
         Ok(self.get(&format!("/transfers/{}", transfer_id)).await?)
     }
 
     /// get your payment methods
-    pub async fn get_payment_methods(&self) -> Result<JsonValue, Error> {
+    pub async fn get_payment_methods(&self) -> Result<Json, Error> {
         Ok(self.get("/payment-methods").await?)
     }
 
@@ -443,7 +470,7 @@ impl PrivateClient {
     }
 
     /// get a list of your coinbase accounts
-    pub async fn get_coinbase_accounts(&self) -> Result<JsonValue, Error> {
+    pub async fn get_coinbase_accounts(&self) -> Result<Json, Error> {
         Ok(self.get("/coinbase-accounts").await?)
     }
 
@@ -451,9 +478,9 @@ impl PrivateClient {
     pub async fn generate_crypto_deposit_address(
         &self,
         coinbase_account_id: &str,
-    ) -> Result<JsonValue, Error> {
+    ) -> Result<Json, Error> {
         Ok(self
-            .post_and_deserialize::<_, JsonValue>(
+            .post_and_deserialize::<_, Json>(
                 &format!("/coinbase-accounts/{}/addresses", coinbase_account_id),
                 None,
             )
@@ -476,58 +503,35 @@ impl PrivateClient {
     /// <br>
     /// <br>
     /// *limit*: truncate list to this many withdrawals, capped at 100. Default is 100
-    pub async fn get_withdrawls(
+    pub async fn get_internal_withdrawls(
         &self,
-        withdraw_type: Option<WithdrawType>,
         profile_id: Option<&str>,
-        before_or_after: Option<BeforeOrAfter>,
-        limit: Option<u8>,
-    ) -> Result<JsonValue, Error> {
-        let mut url = String::from("/transfers/");
-        let mut appended = false;
-        if let Some(n) = withdraw_type {
-            appended = true;
-            match n {
-                WithdrawType::Withdraw => url.push_str("?type=withdraw"),
-                WithdrawType::InternalWithdraw => url.push_str("?type=internal_withdraw"),
-            }
-        }
-        if let Some(n) = profile_id {
-            if appended == false {
-                appended = true;
-                url.push_str(&format!("?profile_id={}", n))
-            } else {
-                url.push_str(&format!("&profile_id={}", n));
-            }
-        }
-        if let Some(n) = before_or_after {
-            if appended == false {
-                appended = true;
-                url.push_str("?")
-            } else {
-                url.push_str("&");
-            }
-            match n {
-                BeforeOrAfter::Before => url.push_str("before"),
-                BeforeOrAfter::After => url.push_str("after"),
-            }
-        }
-        if let Some(mut n) = limit {
-            if n > 100 {
-                n = 100;
-            }
-            if appended == false {
-                url.push_str(&format!("?limit={}", n))
-            } else {
-                url.push_str(&format!("&limit={}", n));
-            }
-        }
-
-        Ok(self.get(&url).await?)
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<Json, Error> {
+        let path = match profile_id {
+            Some(n) => format!("/transfers?type=internal_withdraw&profile_id={}&", n),
+            None => String::from("/transfers?type=internal_withdraw&"),
+        };
+        Ok(self.get_paginated(&path, before, after, limit).await?)
     }
 
+    pub async fn get_withdrawls(
+        &self,
+        profile_id: Option<&str>,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<Json, Error> {
+        let path = match profile_id {
+            Some(n) => format!("/transfers?type=withdraw&profile_id={}&", n),
+            None => String::from("/transfers?type=withdraw&"),
+        };
+        Ok(self.get_paginated(&path, before, after, limit).await?)
+    }
     /// get information on a single withdrawal
-    pub async fn get_withdrawl(&self, transfer_id: &str) -> Result<JsonValue, Error> {
+    pub async fn get_withdrawl(&self, transfer_id: &str) -> Result<Json, Error> {
         Ok(self.get(&format!("/transfers/{}", transfer_id)).await?)
     }
 
@@ -572,7 +576,7 @@ impl PrivateClient {
         destination_tag: Option<&str>,
         no_destination_tag: Option<bool>,
         add_network_fee_to_total: Option<bool>,
-    ) -> Result<JsonValue, Error> {
+    ) -> Result<Json, Error> {
         Ok(self
             .post_and_deserialize(
                 "/withdrawals/coinbase-account",
@@ -689,63 +693,8 @@ impl PrivateClient {
     }
 
     /// get cryptographically signed prices ready to be posted on-chain using Open Oracle smart contracts.
-    pub async fn oracle(&self) -> Result<JsonValue, Error> {
+    pub async fn oracle(&self) -> Result<Json, Error> {
         Ok(self.get("/oracle").await?)
-    }
-}
-
-pub struct Pagination {
-    before_id: Option<String>,
-    after_id: Option<String>,
-    limit: Option<u16>,
-}
-
-impl Pagination {
-    pub fn new(before_id: Option<&str>, after_id: Option<&str>, limit: Option<u16>) -> Self {
-        Self {
-            before_id: match before_id {
-                Some(n) => Some(n.to_string()),
-                None => None,
-            },
-            after_id: match after_id {
-                Some(n) => Some(n.to_string()),
-                None => None,
-            },
-            limit,
-        }
-    }
-
-    pub fn to_params(self) -> String {
-        let mut appended = false;
-        let mut s = String::new();
-        if let Some(n) = self.before_id {
-            s.push_str(&format!("?before={}", n));
-            appended = true;
-        }
-
-        if let Some(n) = self.after_id {
-            match appended {
-                true => s.push_str(&format!("&after={}", n)),
-                false => {
-                    s.push_str(&format!("?after={}", n));
-                    appended = true;
-                }
-            }
-        }
-
-        if let Some(mut n) = self.limit {
-            if n > 1000 {
-                n = 1000;
-            }
-            match appended {
-                true => s.push_str(&format!("&limit={}", n)),
-                false => {
-                    s.push_str(&format!("?limit={}", n));
-                }
-            }
-        }
-
-        s
     }
 }
 
@@ -757,23 +706,6 @@ pub enum OrderStatus {
     OpenPending,
     ActivePending,
     OpenActivePending,
-}
-
-/// Withdraw Type
-pub enum WithdrawType {
-    Withdraw,
-    InternalWithdraw,
-}
-
-/// Deposit Type
-pub enum DepositType {
-    Deposit,
-    InternalDeposite,
-}
-
-pub enum BeforeOrAfter {
-    Before,
-    After,
 }
 
 /// Stablecoin Conversion
