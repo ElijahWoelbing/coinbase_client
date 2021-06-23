@@ -961,11 +961,10 @@ impl PrivateClient {
             )
             .await?)
     }
-    /// Creates a report
+    
+    /// Reports provide batches of historic information about your profile in various human and machine readable forms    
     /// <br>
     /// Create a `Report` useing [`ReportBuilder`](https://docs.rs/coinbase-client/1.0.0-alpha/coinbase_client/private_client/struct.ReportBuilder.html)
-    /// <br>
-    /// Reports provide batches of historic information about your profile in various human and machine readable forms
     /// <br>
     /// [API docs](https://docs.pro.coinbase.com/#create-a-new-report)
     /// <br>
@@ -1161,7 +1160,7 @@ pub struct DepositInfo {
     payout_at: Option<String>,
 }
 
-/// A structure that repersents Withdrawl Info
+/// A structure that repersents Withdraw Info
 #[derive(Deserialize, Debug)]
 pub struct WithdrawInfo {
     id: String,
@@ -1223,7 +1222,8 @@ pub struct Fill {
     price: String,
     size: String,
     order_id: String,
-    created_at: String,
+    #[serde(deserialize_with = "deserialize_to_date")]
+    created_at: DateTime<Utc>,
     liquidity: String,
     fee: String,
     settled: bool,

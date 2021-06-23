@@ -247,7 +247,7 @@ async fn test_get_account_holds() {
     let client = create_client();
     let _holds = client
         .get_account_holds(
-            "2141660b-da3d-5060-8af1-b8478cf6dd44",
+            "680f85f4-1a99-4108-93ce-a9066f9de246",
             None,
             None,
             Some(100),

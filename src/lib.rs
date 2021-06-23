@@ -14,7 +14,7 @@ pub(crate) const COINBASE_API_URL: &'static str = "https://api.pro.coinbase.com"
 pub(crate) const COINBASE_SANDBOX_API_URL: &'static str =
     "https://api-public.sandbox.pro.coinbase.com";
 
-/// alias for serde_json::Value used for data that cannot predictably be turned into its own struct
+/// alias for serde_json::Value return type for data that cannot predictably deserialized into a strongly typed struct
 pub type Json = serde_json::Value;
 
 // derserilize to a type that impls the Deserialize trait
