@@ -9,11 +9,13 @@ use self::error::{Error, ErrorKind, ErrorMessage, StatusError};
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{self, de};
 use serde::{Deserialize, Deserializer};
-use std::fmt;
 
 pub(crate) const COINBASE_API_URL: &'static str = "https://api.pro.coinbase.com";
 pub(crate) const COINBASE_SANDBOX_API_URL: &'static str =
     "https://api-public.sandbox.pro.coinbase.com";
+
+/// alias for serde_json::Value used for data that cannot predictably be turned into its own struct
+pub type Json = serde_json::Value;
 
 // derserilize to a type that impls the Deserialize trait
 pub(crate) async fn deserialize_response<T>(response: reqwest::Response) -> Result<T, Error>
@@ -30,15 +32,6 @@ where
     }
 
     Ok(response.json::<T>().await?)
-}
-
-// deserializes a f64 compatable str to a f64
-pub(crate) fn deserialize_to_f64<'de, D>(deserializer: D) -> Result<f64, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    s.parse::<f64>().map_err(serde::de::Error::custom)
 }
 
 // deserializes a ISO 8601 / RFC 3339 date & time format str to a DateTime<Utc>

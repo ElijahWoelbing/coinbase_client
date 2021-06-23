@@ -223,6 +223,13 @@ impl SharedOptions for OrderBuilder {
     }
 
     /// Sets the Order ID to identify your order
+    /// The client_oid is different than the server-assigned order id.
+    /// <br>
+    /// If you are consuming the public feed and see a received message with your client_oid,
+    /// <br>
+    /// you should record the server-assigned order_id as it will be used for future order status updates.
+    /// <br>
+    /// The client_oid will NOT be used after the received message is sent.
     fn client_oid(mut self, client_oid: String) -> Self {
         self.client_oid = Some(client_oid);
         self
@@ -273,23 +280,29 @@ impl LimitOptions for OrderBuilder {
     }
 }
 
+/// Buy or Sell `Order`
 #[derive(Clone, Copy, Debug)]
 pub enum OrderSide {
     Buy,
     Sell,
 }
+/// Loss triggers when the last trade price changes to a value at or below the stop_price.
+/// <br>
+/// Entry triggers when the last trade price changes to a value at or above the stop_price.
 #[derive(Clone, Copy, Debug)]
 pub enum OrderStop {
-    Loss,  // Triggers when the last trade price changes to a value at or below the stop_price.
-    Entry, // Triggers when the last trade price changes to a value at or above the stop_price.
+    Loss,
+    Entry,
 }
 
+/// Size or Funds of Currency
 #[derive(Clone, Copy, Debug)]
 pub enum SizeOrFunds {
     Size(f64),
     Funds(f64),
 }
 
+// Time in force policies provide guarantees about the lifetime of an `Order`
 #[derive(Clone, Copy, Debug)]
 pub enum TimeInForce {
     GoodTillCancel {
@@ -310,6 +323,7 @@ pub enum CancelAfter {
     Day,
 }
 
+/// Used to change the self-trade behavior
 #[derive(Clone, Copy, Debug)]
 pub enum SelfTradePrevention {
     DecreaseCancel,

@@ -1,7 +1,7 @@
 use crate::configure_pagination;
 use crate::{
-    deserialize_option_to_date, deserialize_response, deserialize_to_date, deserialize_to_f64,
-    COINBASE_API_URL, COINBASE_SANDBOX_API_URL,
+    deserialize_option_to_date, deserialize_response, deserialize_to_date, Json, COINBASE_API_URL,
+    COINBASE_SANDBOX_API_URL,
 };
 
 use super::Order;
@@ -17,9 +17,6 @@ use serde::{self, Deserialize};
 use std::str;
 use std::time::{SystemTime, SystemTimeError};
 
-/// alias for serde_json::Value used for data that cannot predictably be turned into its own struct
-pub type Json = serde_json::Value;
-
 /// `PrivateClient` requires authentication and provide access to placing orders and other account information
 pub struct PrivateClient {
     reqwest_client: reqwest::Client,
@@ -30,28 +27,6 @@ pub struct PrivateClient {
 }
 
 impl PrivateClient {
-    /// Creates a new `PrivateClient`
-    pub fn new(secret: String, passphrase: String, key: String) -> Self {
-        Self {
-            reqwest_client: reqwest::Client::new(),
-            secret, // shared secret
-            key,
-            passphrase,
-            url: COINBASE_API_URL,
-        }
-    }
-
-    /// Creates a new `PrivateClient` for testing API connectivity and web trading
-    pub fn new_sandbox(secret: String, passphrase: String, key: String) -> Self {
-        Self {
-            reqwest_client: reqwest::Client::new(),
-            secret,
-            key,
-            passphrase,
-            url: COINBASE_SANDBOX_API_URL,
-        }
-    }
-
     async fn get_paginated<T>(
         &self,
         path: &str,
@@ -62,9 +37,8 @@ impl PrivateClient {
     where
         T: serde::de::DeserializeOwned,
     {
-        let params = configure_pagination(before, after, limit);
-        println!("{}{}", path, params);
-        self.get(&format!("{}{}", path, params)).await
+        let pagination_params = configure_pagination(before, after, limit);
+        self.get(&format!("{}{}", path, pagination_params)).await
     }
 
     async fn get<T>(&self, path: &str) -> Result<T, Error>
@@ -81,21 +55,19 @@ impl PrivateClient {
         deserialize_response::<T>(response).await
     }
 
-    // deserialize to type T
     async fn post_and_deserialize<T, K>(&self, path: &str, body: Option<K>) -> Result<T, Error>
     where
-        K: serde::Serialize,            // body must serialize
-        T: serde::de::DeserializeOwned, // response must deserialize
+        K: serde::Serialize,
+        T: serde::de::DeserializeOwned,
     {
         deserialize_response::<T>(self.post(path, body).await?).await
     }
 
     async fn post<K>(&self, path: &str, body: Option<K>) -> Result<reqwest::Response, Error>
     where
-        K: serde::Serialize, // body must serialize
+        K: serde::Serialize,
     {
-        let url = format!("{}{}", self.url, path);
-        let request_builder = self.reqwest_client.post(url);
+        let request_builder = self.reqwest_client.post(format!("{}{}", self.url, path));
         Ok(if let Some(n) = body {
             request_builder
                 .headers(self.access_headers(path, Some(&serde_json::to_string(&n)?), "POST"))
@@ -168,7 +140,7 @@ impl PrivateClient {
         headers
     }
 
-    pub fn sign_message(
+    fn sign_message(
         &self,
         url: &str,
         body: Option<&str>,
@@ -203,23 +175,80 @@ impl PrivateClient {
         base64_encoding
     }
 
-    /// gets a list of trading accounts from the profile of the API key.
+    /// Creates a new `PrivateClient`
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// ~~~~
+    pub fn new(secret: String, passphrase: String, key: String) -> Self {
+        Self {
+            reqwest_client: reqwest::Client::new(),
+            secret, // shared secret
+            key,
+            passphrase,
+            url: COINBASE_API_URL,
+        }
+    }
+
+    /// Creates a new `PrivateClient` for testing API connectivity and web trading
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// ~~~~
+    pub fn new_sandbox(secret: String, passphrase: String, key: String) -> Self {
+        Self {
+            reqwest_client: reqwest::Client::new(),
+            secret,
+            key,
+            passphrase,
+            url: COINBASE_SANDBOX_API_URL,
+        }
+    }
+
+    /// Gets a list of trading accounts from the profile of the API key.
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#account)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let accounts = client.get_accounts().await.unwrap();
+    /// ~~~~
     pub async fn get_accounts(&self) -> Result<Vec<Account>, Error> {
         let accounts = self.get("/accounts").await?;
         Ok(accounts)
     }
 
-    /// get trading account by account ID
+    /// Get trading account by account ID
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#account)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let account = client.get_account("1f6a7175-a89c-494f-986d-af9987e6dd69")
+    /// .await
+    /// .unwrap();
+    /// ~~~~
     pub async fn get_account(&self, account_id: &str) -> Result<Account, Error> {
         let account = self.get(&format!("/accounts/{}", account_id)).await?;
         Ok(account)
     }
 
-    /// List account activity of the API key's profile.
+    /// Get account activity of the API key's profile.
     /// <br>
-    /// Account activity either increases or decreases your account balance.
+    /// [API docs](https://docs.pro.coinbase.com/#get-account-history)
     /// <br>
-    /// Items are paginated and sorted latest first
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    ///  let history = client
+    /// .get_account_history(
+    ///     "680f85f4-1a99-4108-93ce-a9066f9de246",
+    ///     Some("297946691"),
+    ///     Some("296147671"),
+    ///     Some(100),
+    /// )
+    /// .await
+    /// .unwrap();
+    /// ~~~~
     pub async fn get_account_history(
         &self,
         account_id: &str,
@@ -240,11 +269,20 @@ impl PrivateClient {
 
     /// Get holds of an account that belong to the same profile as the API key.
     /// <br>
-    /// Holds are placed on an account for any active orders or pending withdraw requests.
+    /// [API docs](https://docs.pro.coinbase.com/#get-holds)\
     /// <br>
-    /// As an order is filled, the hold amount is updated. If an order is canceled, any remaining hold is removed.
-    /// <br>
-    /// For a withdraw, once it is completed, the hold is removed.
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let _holds = client
+    /// .get_account_holds(
+    ///     "680f85f4-1a99-4108-93ce-a9066f9de246",
+    ///     None,
+    ///     None,
+    ///     Some(100),
+    /// )
+    /// .await
+    /// .unwrap();
+    /// ~~~~
     pub async fn get_account_holds(
         &self,
         account_id: &str,
@@ -263,7 +301,19 @@ impl PrivateClient {
         Ok(account)
     }
 
-    /// you can place three types of orders: limit, market and stop [Overview of order types and settings](https://help.coinbase.com/en/pro/trading-and-funding/orders/overview-of-order-types-and-settings-stop-limit-market)
+    /// You can place three types of orders: limit, market and stop
+    /// <br>
+    /// [Overview of order types and settings](https://help.coinbase.com/en/pro/trading-and-funding/orders/overview-of-order-types-and-settings-stop-limit-market)
+    /// <br>
+    /// Create order order useing [`OrderBuilder`](https://docs.rs/coinbase-client/1.0.0-alpha/coinbase_client/private_client/struct.OrderBuilder.html)
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#place-a-new-order)
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let order = OrderBuilder::market(OrderSide::Buy, "BTC-USD", SizeOrFunds::Funds(10.00))
+    /// .build();
+    /// let res = client.place_order(order).await.unwrap();
+    /// ~~~~
     pub async fn place_order(&self, order: Order) -> Result<String, Error> {
         #[derive(Deserialize, Debug)]
         pub struct OrderID {
@@ -275,22 +325,59 @@ impl PrivateClient {
             .id)
     }
 
-    /// cancel order specified by order ID
+    /// Cancel order specified by order ID
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#cancel-an-order)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 33000.0, 1.0)
+    /// .build();
+    /// let order_to_cancel_id = client.place_order(order).await.unwrap();
+    /// let canceled_order_id = client.cancel_order(&order_to_cancel_id)
+    /// .await.unwrap();
+    /// ~~~~
     pub async fn cancel_order(&self, order_id: &str) -> Result<String, Error> {
         Ok(self.delete(&format!("/orders/{}", order_id)).await?)
     }
 
-    /// cancel order specified by order OID
+    /// Cancel order specified by order OID
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#cancel-an-order)
     pub async fn cancel_order_by_oid(&self, oid: &str) -> Result<String, Error> {
         Ok(self.delete(&format!("/orders/client:{}", oid)).await?)
     }
 
-    /// cancel all orders
+    /// Cancel all orders
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#cancel-an-order)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let canceled_orders_ids = client.cancel_orders().await.unwrap();
+    /// ~~~~
     pub async fn cancel_orders(&self) -> Result<Vec<String>, Error> {
         Ok(self.delete("/orders").await?)
     }
 
-    /// get open orders from the profile that the API key belongs
+    /// Get open orders from the profile that the API key belongs
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#list-orders)
+    /// <br>
+    /// This request is [paginated](https://docs.pro.coinbase.com/#pagination)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let orders = client
+    ///     .get_orders(
+    ///         Some(OrderStatus::OpenActivePending),
+    ///         Some("2021-06-19T20:24:20.467086Z"),
+    ///         None,
+    ///         None,
+    ///     )
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
     pub async fn get_orders(
         &self,
         order_status: Option<OrderStatus>,
@@ -317,17 +404,39 @@ impl PrivateClient {
         Ok(self.get_paginated(&path, before, after, limit).await?)
     }
 
-    /// get open order from the profile that the API key belongs
+    /// Get open order from the profile that the API key belongs
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#get-an-order)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 36000.0, 1.0)
+    /// .build();
+    /// let order_id = client.place_order(order).await.unwrap();
+    /// let order = client.get_order(&order_id).await.unwrap();
+    /// ~~~~
     pub async fn get_order(&self, order_id: &str) -> Result<OrderInfo, Error> {
         Ok(self.get(&format!("/orders/{}", order_id)).await?)
     }
-    // IMPORTANT not tested as OID is not fully supported yet
-    /// gets order specified by order OID
+
+    /// Gets order specified by order OID
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#get-an-order)
     pub async fn get_order_by_oid(&self, oid: &str) -> Result<OrderInfo, Error> {
         Ok(self.get(&format!("/orders/client:{}", oid)).await?)
     }
 
-    /// get recent fills by specified order_id of the API key's profile
+    /// Get recent fills by specified order_id of the API key's profile
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#fills)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let fills = client
+    ///     .get_fill_by_order_id("4f2756cf-dcb5-492b-83e5-5f2141892758", None, None, None)
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
     pub async fn get_fill_by_order_id(
         &self,
         order_id: &str,
@@ -345,7 +454,17 @@ impl PrivateClient {
             .await?)
     }
 
-    /// get recent fills by specified product_id of the API key's profile
+    /// Get recent fills by specified product_id of the API key's profile
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#fills)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let fills = client
+    ///     .get_fills_by_product_id(&product_id, None, Some("29786034"), None)
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
     pub async fn get_fills_by_product_id(
         &self,
         product_id: &str,
@@ -363,24 +482,45 @@ impl PrivateClient {
             .await?)
     }
 
-    /// get information on your payment method transfer limits, as well as buy/sell limits per currency
+    /// Get information on your payment method transfer limits, as well as buy/sell limits per currency
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#limits)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let limits = client.get_limits().await.unwrap();
+    /// ~~~~
     pub async fn get_limits(&self) -> Result<Json, Error> {
         Ok(self.get(&format!("/users/self/exchange-limits")).await?)
     }
 
-    /// get deposits from the profile of the API key, in descending order by created time
+    /// Get deposits from the profile of the API key, in descending order by created time
     /// <br>
     /// **optional parameters**
-    /// *profile_id*: limit list of deposits to this profile_id. By default, it retrieves deposits using default profile
     /// <br>
+    /// *profile_id*: limit list of deposits to this profile_id. By default, it retrieves deposits using default profile
     /// <br>
     /// *before*: if before is set, then it returns deposits created after the before timestamp, sorted by oldest creation date
     /// <br>
-    /// <br>
     /// *after*: if after is set, then it returns deposits created before the after timestamp, sorted by newest
     /// <br>
-    /// <br>
     /// *limit*: truncate list to this many deposits, capped at 100. Default is 100.
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#list-deposits)
+    /// <br>
+    /// This request is [paginated](https://docs.pro.coinbase.com/#pagination)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let deposits = client
+    ///     .get_deposits(
+    ///         Some("b7482eaa-3eea-4065-9d81-1484257c5f92"),
+    ///         None,
+    ///         None,
+    ///         None,
+    ///     )
+    ///     .await.unwrap();
+    /// ~~~~
     pub async fn get_deposits(
         &self,
         profile_id: Option<&str>,
@@ -394,19 +534,33 @@ impl PrivateClient {
         };
         Ok(self.get_paginated(&path, before, after, limit).await?)
     }
-    /// get internal deposits from the profile of the API key, in descending order by created time
+    /// Get internal deposits from the profile of the API key, in descending order by created time
     /// <br>
     /// **optional parameters**
-    /// *profile_id*: limit list of internal deposits to this profile_id. By default, it retrieves internal deposits using default profile
     /// <br>
+    /// *profile_id*: limit list of internal deposits to this profile_id. By default, it retrieves internal deposits using default profile
     /// <br>
     /// *before*: if before is set, then it returns internal deposits created after the before timestamp, sorted by oldest creation date
     /// <br>
-    /// <br>
     /// *after*: if after is set, then it returns internal deposits created before the after timestamp, sorted by newest
     /// <br>
-    /// <br>
     /// *limit*: truncate list to this many internal deposits, capped at 100. Default is 100.
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#list-deposits)
+    /// <br>
+    /// This request is [paginated](https://docs.pro.coinbase.com/#pagination)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let deposits = client
+    /// .get_internal_deposits(
+    ///     Some("e1d7731f-b7e2-4285-b711-eeec76fc2aff"),
+    ///     None,
+    ///     None,
+    ///     None,
+    /// )
+    /// .await.unwrap();
+    /// ~~~~
     pub async fn get_internal_deposits(
         &self,
         profile_id: Option<&str>,
@@ -421,17 +575,43 @@ impl PrivateClient {
         Ok(self.get_paginated(&path, before, after, limit).await?)
     }
 
-    /// get information on a single deposit
+    /// Get information on a single deposit
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#single-deposit)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let deposit = client
+    /// .get_deposit("80259339-7bf9-498f-8200-ddbd32a1c545")
+    /// .await;
+    /// ~~~~
     pub async fn get_deposit(&self, transfer_id: &str) -> Result<Json, Error> {
         Ok(self.get(&format!("/transfers/{}", transfer_id)).await?)
     }
 
-    /// get your payment methods
+    /// Get your payment methods
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#payment-methods)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let payment_methods = client.get_payment_methods().await.unwrap();
+    /// ~~~~
     pub async fn get_payment_methods(&self) -> Result<Json, Error> {
         Ok(self.get("/payment-methods").await?)
     }
 
-    /// deposit funds from a payment method
+    /// Deposit funds from a payment method
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#payment-method)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let res = client
+    /// .deposit_funds(10.00, "USD", "1b4b4fbc-8921-5e7c-b362-a1c589a2cf20")
+    /// .await
+    /// .unwrap();
+    /// ~~~~
     pub async fn deposit_funds(
         &self,
         amount: f64,
@@ -450,7 +630,17 @@ impl PrivateClient {
             .await?)
     }
 
-    /// deposit funds from a coinbase account
+    /// Deposit funds from a coinbase account
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#coinbase)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let res = client
+    ///     .deposit_funds_from_coinbase(10.00, "BTC", "95671473-4dda-5264-a654-fc6923e8a334")
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
     pub async fn deposit_funds_from_coinbase(
         &self,
         amount: f64,
@@ -469,12 +659,29 @@ impl PrivateClient {
             .await?)
     }
 
-    /// get a list of your coinbase accounts
+    /// Get a list of your coinbase accounts
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#coinbase-accounts)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let accounts = client.get_coinbase_accounts().await.unwrap();
+    /// ~~~~
     pub async fn get_coinbase_accounts(&self) -> Result<Json, Error> {
         Ok(self.get("/coinbase-accounts").await?)
     }
 
-    /// generate an address for crypto deposits
+    /// Generate an address for crypto deposits
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#generate-a-crypto-deposit-address)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let address = client
+    ///     .generate_crypto_deposit_address("95671473-4dda-5264-a654-fc6923e8a334")
+    ///     .await
+    ///     .unwrap();    
+    /// ~~~~
     pub async fn generate_crypto_deposit_address(
         &self,
         coinbase_account_id: &str,
@@ -487,22 +694,79 @@ impl PrivateClient {
             .await?)
     }
 
-    /// get withdrawals from the profile of the API key
+    /// Get withdrawals from the profile of the API key
     /// <br>
     /// **optional parameters**
-    /// *withdrawl_type*: set to withdraw or internal_withdraw (transfer between portfolios)
-    /// <br>
     /// <br>
     /// *profile_id*: limit list of withdrawals to this profile_id. By default, it retrieves withdrawals using default profile
     /// <br>
-    /// <br>
     /// *before*: If before is set, then it returns withdrawals created after the before timestamp, sorted by oldest creation date
-    /// <br>
     /// <br>
     /// *after*: If after is set, then it returns withdrawals created before the after timestamp, sorted by newest
     /// <br>
-    /// <br>
     /// *limit*: truncate list to this many withdrawals, capped at 100. Default is 100
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#list-withdrawals)
+    /// <br>
+    /// This request is [paginated](https://docs.pro.coinbase.com/#pagination)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let withdrawls = client
+    ///     .get_withdrawls(
+    ///         Some("b7482eaa-3eea-4065-9d81-1484257c5f92"),
+    ///         None,
+    ///         None,
+    ///         None,
+    ///     )
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
+    pub async fn get_withdrawls(
+        &self,
+        profile_id: Option<&str>,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<Json, Error> {
+        let path = match profile_id {
+            Some(n) => format!("/transfers?type=withdraw&profile_id={}&", n),
+            None => String::from("/transfers?type=withdraw&"),
+        };
+        Ok(self.get_paginated(&path, before, after, limit).await?)
+    }
+
+    /// Get withdrawals from the profile of the API key
+    /// <br>
+    /// **optional parameters**
+    /// <br>
+    /// *profile_id*: limit list of internal withdrawals to this profile_id. By default, it retrieves internal withdrawals using default profile
+    /// <br>
+    /// <br>
+    /// *before*: If before is set, then it returns internal withdrawals created after the before timestamp, sorted by oldest creation date
+    /// <br>
+    /// <br>
+    /// *after*: If after is set, then it returns internal withdrawals created before the after timestamp, sorted by newest
+    /// <br>
+    /// <br>
+    /// *limit*: truncate list to this many internal withdrawals, capped at 100. Default is 100
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#list-withdrawals)
+    /// <br>
+    /// This request is [paginated](https://docs.pro.coinbase.com/#pagination)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let withdrawls = client
+    ///     .get_internal_withdrawls(
+    ///         Some("b7482eaa-3eea-4065-9d81-1484257c5f92"),
+    ///         None,
+    ///         None,
+    ///         None,
+    ///     )
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
     pub async fn get_internal_withdrawls(
         &self,
         profile_id: Option<&str>,
@@ -517,25 +781,53 @@ impl PrivateClient {
         Ok(self.get_paginated(&path, before, after, limit).await?)
     }
 
-    pub async fn get_withdrawls(
-        &self,
-        profile_id: Option<&str>,
-        before: Option<&str>,
-        after: Option<&str>,
-        limit: Option<u16>,
-    ) -> Result<Json, Error> {
-        let path = match profile_id {
-            Some(n) => format!("/transfers?type=withdraw&profile_id={}&", n),
-            None => String::from("/transfers?type=withdraw&"),
-        };
-        Ok(self.get_paginated(&path, before, after, limit).await?)
-    }
-    /// get information on a single withdrawal
+    /// Get information on a single withdrawal
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#single-withdrawal)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let withdrawl = client
+    ///     .get_withdrawl("0e94a87f-9d50-4ead-86ac-7898830c5edf")
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
     pub async fn get_withdrawl(&self, transfer_id: &str) -> Result<Json, Error> {
         Ok(self.get(&format!("/transfers/{}", transfer_id)).await?)
     }
 
-    /// withdraw funds to a coinbase account
+    /// Withdraw funds to a payment method
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#payment-method55)
+    pub async fn withdraw_funds(
+        &self,
+        amount: f64,
+        currency: &str,
+        payment_method_id: &str,
+    ) -> Result<WithdrawInfo, Error> {
+        Ok(self
+            .post_and_deserialize(
+                "/withdrawals/payment-method",
+                Some(serde_json::json!({
+                        "amount": amount,
+                        "currency": currency,
+                        "payment_method_id": payment_method_id
+                })),
+            )
+            .await?)
+    }
+
+    /// Withdraw funds to a coinbase account
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#coinbase56)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let res = client
+    ///     .withdraw_to_coinbase(1.0, "ADA", "91bdfea7-f2sd-5waa-bb0d-5b93c9f09ffc")
+    ///     .await
+    ///     .unwrap();    
+    /// ~~~~
     pub async fn withdraw_to_coinbase(
         &self,
         amount: f64,
@@ -554,8 +846,9 @@ impl PrivateClient {
             .await?)
     }
 
-    /// withdraw funds to a crypto address.
+    /// Withdraw funds to a crypto address.
     /// <br>
+    /// **parameters**
     /// <br>
     /// amount: The amount to withdraw
     /// <br>
@@ -568,6 +861,13 @@ impl PrivateClient {
     /// no_destination_tag:	A boolean flag to opt out of using a destination tag for currencies that support one. This is required when not providing a destination tag.
     /// <br>
     /// add_network_fee_to_total: A boolean flag to add the network fee on top of the amount. If this is blank, it will default to deducting the network fee from the amount.
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#crypto)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let res = client.withdraw_to_crypto_address(6.0, "ADA", "addr1qyk0yr3ht9d6hcqwp8q8j38nxs04npyjauzz9wp5jcfr95h64lvegfk57zmzltj3nmpjff6490ayyvjh0g6sne6hm3hspnnscy", None, None, None).await.unwrap();
+    /// ~~~~
     pub async fn withdraw_to_crypto_address(
         &self,
         amount: f64,
@@ -579,7 +879,7 @@ impl PrivateClient {
     ) -> Result<Json, Error> {
         Ok(self
             .post_and_deserialize(
-                "/withdrawals/coinbase-account",
+                "/withdrawals/crypto",
                 Some(serde_json::json!({
                         "amount": amount,
                         "currency": currency,
@@ -592,12 +892,29 @@ impl PrivateClient {
             .await?)
     }
 
-    /// get your current maker & taker fee rates, as well as your 30-day trailing volume
+    /// Get your current maker & taker fee rates, as well as your 30-day trailing volume
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#get-current-fees)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let fees = client.get_fees().await.unwrap();
+    /// ~~~~
     pub async fn get_fees(&self) -> Result<Fees, Error> {
         Ok(self.get("/fees").await?)
     }
 
-    /// get the network fee estimate when sending to the given address
+    /// Get the network fee estimate when sending to the given address
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#fee-estimate)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let fee = client
+    ///     .get_fee_estimate("ETH", "0x82289D45Ee8E806C63Ba0DC94a22d4238525d815")
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
     pub async fn get_fee_estimate(
         &self,
         currency: &str,
@@ -616,7 +933,17 @@ impl PrivateClient {
         Ok(fee.fee)
     }
 
-    /// convert between stablecoins
+    /// Convert between stablecoins
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#stablecoin-conversions)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let convertion = client
+    ///     .convert_stablecoin("USD", "USDC", 10.00)
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
     pub async fn convert_stablecoin(
         &self,
         from_currency_id: &str,
@@ -634,33 +961,90 @@ impl PrivateClient {
             )
             .await?)
     }
-    // creates a report
-    //<br>
-    //<br>
-    /// reports provide batches of historic information about your profile in various human and machine readable forms
+    /// Creates a report
+    /// <br>
+    /// Create a `Report` useing [`ReportBuilder`](https://docs.rs/coinbase-client/1.0.0-alpha/coinbase_client/private_client/struct.ReportBuilder.html)
+    /// <br>
+    /// Reports provide batches of historic information about your profile in various human and machine readable forms
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#create-a-new-report)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let report = Report::account_builder(
+    ///     "2014-11-01T00:00:00.000Z",
+    ///     "2021-06-11T02:48:15.853Z",
+    ///     "1f6a7175-a89c-494f-986d-af9987e6dd69",
+    /// )
+    /// .email("willstanhope@gmail.com")
+    /// .format(Format::CSV)
+    /// .build();
+    /// let res = client.create_report(report).await.unwrap();
+    /// ~~~~
     pub async fn create_report<'a>(&self, report: Report) -> Result<ReportInfo, Error> {
         Ok(self.post_and_deserialize("/reports", Some(report)).await?)
     }
 
-    /// get report status
-    //<br>
-    //<br>
-    /// once a report request has been accepted for processing, the status becomes available
+    /// Get report status
+    /// <br>
+    /// Once a report request has been accepted for processing, the status becomes available
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#get-report-status)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let report = client
+    /// .get_report("d4a3e847-b618-454d-bcb3-e77b0ad61600")
+    /// .await
+    /// .unwrap();
+    /// ~~~~
     pub async fn get_report(&self, report_id: &str) -> Result<ReportInfo, Error> {
         Ok(self.get(&format!("/reports/{}", report_id)).await?)
     }
 
-    /// get your profiles
+    /// Get your profiles
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#list-profiles)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let profiles = client.get_profiles().await.unwrap();
+    /// ~~~~
     pub async fn get_profiles(&self) -> Result<Vec<Profile>, Error> {
         Ok(self.get("/profiles").await?)
     }
 
-    /// get a single profile by profile id
+    /// Get a single profile by profile id
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#get-a-profile)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let profile = client
+    /// .get_profile("e1d7731f-b7e2-4285-b711-eeec76fc2aff")
+    /// .await
+    /// .unwrap();
+    /// ~~~~
     pub async fn get_profile(&self, profile_id: &str) -> Result<Profile, Error> {
         Ok(self.get(&format!("/profiles/{}", profile_id)).await?)
     }
 
-    /// transfer funds from API key's profile to another user owned profile
+    /// Transfer funds from API key's profile to another user owned profile
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#create-profile-transfer)
+    /// <br>
+    /// ~~~~
+    /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let ok = client
+    ///     .create_profile_transfer(
+    ///         "e1d7731f-b7e2-4285-b711-eeec76fc2aff",
+    ///         "3510ac37-1a99-4c9c-9865-15f1bc5a832e",
+    ///         "USD",
+    ///         100.00,
+    ///     )
+    ///     .await
+    ///     .unwrap();
+    /// ~~~~
     pub async fn create_profile_transfer(
         &self,
         from: &str,
@@ -692,12 +1076,15 @@ impl PrivateClient {
         Ok(response.text().await?)
     }
 
-    /// get cryptographically signed prices ready to be posted on-chain using Open Oracle smart contracts.
+    /// Get cryptographically signed prices ready to be posted on-chain using Open Oracle smart contracts.
+    /// <br>
+    /// [API docs](https://docs.pro.coinbase.com/#oracle)
     pub async fn oracle(&self) -> Result<Json, Error> {
         Ok(self.get("/oracle").await?)
     }
 }
 
+/// Limit list of orders to these statuses. Passing `OpenActivePending` returns orders of all statuses.
 pub enum OrderStatus {
     Open,
     Active,
@@ -708,48 +1095,42 @@ pub enum OrderStatus {
     OpenActivePending,
 }
 
-/// Stablecoin Conversion
+/// A structure that repersents a Stablecoin Conversion
 #[derive(Deserialize, Debug)]
 pub struct StablecoinConversion {
     id: String,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    amount: f64,
+    amount: String,
     from_account_id: String,
     to_account_id: String,
     from: String,
     to: String,
 }
 
-/// Account
+/// A structure that repersents an Account
 #[derive(Deserialize, Debug)]
 pub struct Account {
     pub id: String,
     pub currency: String,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    pub balance: f64,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    pub available: f64,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    pub hold: f64,
+    pub balance: String,
+    pub available: String,
+    pub hold: String,
     pub profile_id: String,
     pub trading_enabled: bool,
 }
 
-/// Account History
+/// A structure that repersents an Account History
 #[derive(Deserialize, Debug)]
 pub struct AccountHistory {
     id: String,
     #[serde(deserialize_with = "deserialize_to_date")]
     created_at: DateTime<Utc>,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    amount: f64,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    balance: f64,
+    amount: String,
+    balance: String,
     r#type: String,
     details: AccountHistoryDetails,
 }
 
-/// Account Hold
+/// A structure that repersents an Account Hold
 #[derive(Deserialize, Debug)]
 pub struct Hold {
     id: String,
@@ -763,6 +1144,7 @@ pub struct Hold {
     r#ref: String,
 }
 
+/// A structure that repersents Account History Details
 #[derive(Deserialize, Debug)]
 pub struct AccountHistoryDetails {
     order_id: Option<String>,
@@ -770,30 +1152,29 @@ pub struct AccountHistoryDetails {
     product_id: Option<String>,
 }
 
+/// A structure that repersents Deposit Info
 #[derive(Deserialize, Debug)]
 pub struct DepositInfo {
     id: String,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    amount: f64,
+    amount: String,
     currency: String,
     payout_at: Option<String>,
 }
 
+/// A structure that repersents Withdrawl Info
 #[derive(Deserialize, Debug)]
 pub struct WithdrawInfo {
     id: String,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    amount: f64,
+    amount: String,
     currency: String,
 }
 
+/// A structure that repersents Order Info
 #[derive(Debug, Deserialize)]
 pub struct OrderInfo {
     id: String,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    price: f64,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    size: f64,
+    price: String,
+    size: String,
     product_id: String,
     side: String,
     stp: Option<String>,
@@ -802,16 +1183,14 @@ pub struct OrderInfo {
     post_only: bool,
     #[serde(deserialize_with = "deserialize_to_date")]
     created_at: DateTime<Utc>,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    fill_fees: f64,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    filled_size: f64,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    executed_value: f64,
+    fill_fees: String,
+    filled_size: String,
+    executed_value: String,
     status: String,
     settled: bool,
 }
 
+/// A structure that repersents Report Info
 #[derive(Debug, Deserialize)]
 pub struct ReportInfo {
     id: String,
@@ -827,6 +1206,7 @@ pub struct ReportInfo {
     params: Option<ReportParams>,
 }
 
+/// A structure that repersents Report Info Params
 #[derive(Debug, Deserialize)]
 pub struct ReportParams {
     #[serde(deserialize_with = "deserialize_to_date")]
@@ -835,35 +1215,30 @@ pub struct ReportParams {
     end_date: DateTime<Utc>,
 }
 
+/// A structure that repersents a Fill
 #[derive(Debug, Deserialize)]
 pub struct Fill {
     trade_id: u64,
     product_id: String,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    price: f64,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    size: f64,
+    price: String,
+    size: String,
     order_id: String,
     created_at: String,
     liquidity: String,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    fee: f64,
+    fee: String,
     settled: bool,
     side: String,
 }
 
-/// a structure that represents your current maker & taker fee rates, as well as your 30-day trailing volume
+/// A structure that represents your current maker & taker fee rates, as well as your 30-day trailing volume
 #[derive(Debug, Deserialize)]
 pub struct Fees {
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    maker_fee_rate: f64,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    taker_fee_rate: f64,
-    #[serde(deserialize_with = "deserialize_to_f64")]
-    usd_volume: f64,
+    maker_fee_rate: String,
+    taker_fee_rate: String,
+    usd_volume: String,
 }
 
-/// a structure represents a single profile
+/// A structure represents a single profile
 #[derive(Debug, Deserialize)]
 pub struct Profile {
     id: String,

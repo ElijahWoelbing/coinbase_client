@@ -9,7 +9,6 @@ fn create_client() -> PrivateClient {
     let key = env::var("KEY").expect("Cant find api key");
     PrivateClient::new_sandbox(secret, passphrase, key)
 }
-
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_accounts() {
     let client = create_client();
@@ -20,7 +19,7 @@ async fn test_get_accounts() {
 async fn test_get_account() {
     let client = create_client();
     let _account = client
-        .get_account("1f6a7175-a89c-494f-986d-af9987e6dd69")
+        .get_account("0589d87c-154d-4f5b-9ed9-ff814f70e04a")
         .await
         .unwrap();
 }
@@ -29,21 +28,21 @@ async fn test_get_account() {
 async fn test_place_order_market_funds() {
     let order = OrderBuilder::market(OrderSide::Buy, "BTC-USD", SizeOrFunds::Funds(10.00)).build();
     let client = create_client();
-    let _json = client.place_order(order).await.unwrap();
+    let _res = client.place_order(order).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_place_order_market_size() {
-    let order = OrderBuilder::market(OrderSide::Buy, "BTC-USD", SizeOrFunds::Size(0.02)).build();
+    let order = OrderBuilder::market(OrderSide::Buy, "ADA", SizeOrFunds::Size(5.00)).build();
     let client = create_client();
-    let _json = client.place_order(order).await.unwrap();
+    let _res = client.place_order(order).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_place_order_limit() {
     let order = Order::limit_builder(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
     let client = create_client();
-    let _json = client.place_order(order).await.unwrap();
+    let _res = client.place_order(order).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
@@ -58,16 +57,14 @@ async fn test_place_order_stop() {
     )
     .build();
     let client = create_client();
-    let _json = client.place_order(order).await.unwrap();
+    let _res = client.place_order(order).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_cancel_order() {
-    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
+    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 33000.0, 1.0).build();
     let client = create_client();
-    // place order
     let order_to_cancel_id = client.place_order(order).await.unwrap();
-    // cancel order
     let _canceled_order_id = client.cancel_order(&order_to_cancel_id).await.unwrap();
 }
 
@@ -95,7 +92,6 @@ async fn test_get_orders() {
 async fn test_get_order() {
     let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
     let client = create_client();
-    // place order
     let order_id = client.place_order(order).await.unwrap();
     let _order = client.get_order(&order_id).await.unwrap();
 }
@@ -114,7 +110,7 @@ async fn test_get_fills_by_product_id() {
     let product_id = "BTC-USD";
     let client = create_client();
     let _fills = client
-        .get_fills_by_product_id(&product_id, None, Some("29786034"), None)
+        .get_fills_by_product_id(&product_id, None, None, None)
         .await
         .unwrap();
 }
@@ -123,7 +119,6 @@ async fn test_get_fills_by_product_id() {
 async fn test_get_limits() {
     let client = create_client();
     let _limits = client.get_limits().await.unwrap();
-    println!("{:?}", _limits);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
@@ -136,9 +131,8 @@ async fn test_get_deposits() {
             None,
             None,
         )
-        .await;
-
-        println!("{:#?}", _deposits);
+        .await
+        .unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
@@ -151,14 +145,15 @@ async fn test_get_internal_deposits() {
             None,
             None,
         )
-        .await;
+        .await
+        .unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_deposit() {
     let client = create_client();
     let _deposit = client
-        .get_deposit("80259339-7bf9-498f-8200-ddbd32a1c545")
+        .get_deposit("80259339-7bf9-498f-8210-ddbd32a1c545")
         .await;
 }
 
@@ -178,7 +173,7 @@ async fn test_get_coinbase_accounts() {
 async fn test_deposit_funds() {
     let client = create_client();
     let _deposit = client
-        .deposit_funds(10.00, "USD", "1b4b4fbc-8071-5e7c-b36e-a1c589a2cf20")
+        .deposit_funds(10.00, "USD", "9da3e279-20a1-57e4-95f8-52ec41041999")
         .await
         .unwrap();
 }
@@ -187,7 +182,7 @@ async fn test_deposit_funds() {
 async fn test_deposit_from_coinbase() {
     let client = create_client();
     let _deposit = client
-        .deposit_funds_from_coinbase(10.00, "BTC", "95671473-4dda-5264-a654-fc6923e8a334")
+        .deposit_funds_from_coinbase(13.468564, "ALGO", "2141660b-da3d-5060-8af1-b8478cf6dd44")
         .await
         .unwrap();
 }
@@ -196,7 +191,7 @@ async fn test_deposit_from_coinbase() {
 async fn test_generate_crypto_address() {
     let client = create_client();
     let _address = client
-        .generate_crypto_deposit_address("95671473-4dda-5264-a654-fc6923e8a334")
+        .generate_crypto_deposit_address("2141660b-da3d-5060-8af1-b8478cf6dd44")
         .await
         .unwrap();
 }
@@ -242,12 +237,7 @@ async fn test_get_withdrawl() {
 async fn test_get_account_history() {
     let client = create_client();
     let _history = client
-        .get_account_history(
-            "680f85f4-1a99-4108-93ce-a9066f9de246",
-            Some("297946691"),
-            Some("296147671"),
-            Some(100),
-        )
+        .get_account_history("680f85f4-1a99-4108-93ce-a9066f9de246", None, None, Some(2))
         .await
         .unwrap();
 }
@@ -257,7 +247,7 @@ async fn test_get_account_holds() {
     let client = create_client();
     let _holds = client
         .get_account_holds(
-            "680f85f4-1a99-4108-93ce-a9066f9de246",
+            "2141660b-da3d-5060-8af1-b8478cf6dd44",
             None,
             None,
             Some(100),
@@ -323,7 +313,7 @@ async fn test_get_profiles() {
 async fn test_get_profile() {
     let client = create_client();
     let _profile = client
-        .get_profile("e1d7731f-b7e2-4285-b711-eeec76fc2aff")
+        .get_profile("6e14a84c-610b-4c63-8b69-443920dffcaf")
         .await
         .unwrap();
 }
@@ -336,9 +326,24 @@ async fn test_create_profile_transfer() {
             "e1d7731f-b7e2-4285-b711-eeec76fc2aff",
             "3510ac37-1a99-4c9c-9865-15f1bc5a832e",
             "USD",
-            10000.00,
+            10.00,
         )
         .await
         .unwrap();
     assert_eq!(ok, "OK")
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_withdraw_to_crypto_address() {
+    let client = create_client();
+    let _res = client.withdraw_to_crypto_address(6.0, "ADA", "addr1qyk0yr3ht9d6hcqwp8q8j38nxs04npyjauzz9wp5jcfr95h64lvegfk57zmzltj3nmpjff6490ayyvjh0g6sne6hm3hspnnscy", None, None, None).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+async fn test_withdraw_to_coinbase() {
+    let client = create_client();
+    let _res = client
+        .withdraw_to_coinbase(1.0, "ADA", "91bdfea7-f243-5baa-bb0d-5b93c9f09ffc")
+        .await
+        .unwrap();
 }

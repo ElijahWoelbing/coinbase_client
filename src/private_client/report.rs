@@ -1,3 +1,4 @@
+/// A structure that repersents a Report
 #[derive(serde::Serialize, Debug)]
 pub struct Report {
     r#type: String,
@@ -10,6 +11,7 @@ pub struct Report {
 }
 
 impl Report {
+    /// Creates a `ReportBuilder` for type fills
     pub fn fills_builder(
         start_date: &str,
         end_date: &str,
@@ -26,6 +28,7 @@ impl Report {
         }
     }
 
+    /// Creates a `ReportBuilder` for type account
     pub fn account_builder(
         start_date: &str,
         end_date: &str,
@@ -43,6 +46,7 @@ impl Report {
     }
 }
 
+/// A `ReportBuilder` can be used to create a `Report` with custom configuration.
 #[derive(Debug)]
 pub struct ReportBuilder {
     r#type: String,
@@ -55,6 +59,7 @@ pub struct ReportBuilder {
 }
 
 impl ReportBuilder {
+    /// Creates a `ReportBuilder` for type fills
     pub fn fills(
         start_date: &str,
         end_date: &str,
@@ -71,6 +76,7 @@ impl ReportBuilder {
         }
     }
 
+    /// Creates a `ReportBuilder` for type account
     pub fn account(
         start_date: &str,
         end_date: &str,
@@ -88,31 +94,33 @@ impl ReportBuilder {
     }
 }
 
-/// fills only builder options
+/// Fills only builder options
 pub trait FillsReportOptions {
     fn account_id(self, account_id: &str) -> Self;
 }
 
 impl FillsReportOptions for ReportBuilder {
+    /// ID of the account to generate an account report for
     fn account_id(mut self, account_id: &str) -> Self {
         self.account_id = Some(account_id.to_string());
         self
     }
 }
 
-/// account only builder options
+/// Account only builder options
 pub trait AccountReportOptions {
     fn product_id(self, product_id: &str) -> Self;
 }
 
 impl AccountReportOptions for ReportBuilder {
+    /// ID of the product to generate a fills report for. E.g. BTC-USD
     fn product_id(mut self, product_id: &str) -> Self {
         self.product_id = Some(product_id.to_string());
         self
     }
 }
 
-/// fills and account builder options
+/// Fills and account builder options
 pub trait SharedReportOptions {
     fn format(self, format: Format) -> Self;
     fn email(self, email: &str) -> Self;
@@ -120,16 +128,19 @@ pub trait SharedReportOptions {
 }
 
 impl SharedReportOptions for ReportBuilder {
+    /// pdf or csv (defualt is pdf)
     fn format(mut self, format: Format) -> Self {
         self.format = format;
         self
     }
 
+    /// Email address to send the report to
     fn email(mut self, email: &str) -> Self {
         self.email = Some(email.to_string());
         self
     }
 
+    /// Builds `Report`
     fn build(self) -> Report {
         Report {
             r#type: self.r#type,
@@ -143,6 +154,7 @@ impl SharedReportOptions for ReportBuilder {
     }
 }
 
+/// Type of report
 #[derive(Debug)]
 pub enum Format {
     PDF,

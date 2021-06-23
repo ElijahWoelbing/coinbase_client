@@ -34,7 +34,10 @@ async fn test_get_product_order_book() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_product_ticker() {
     let client = PublicClient::new_sandbox();
-    let _ticker = client.get_product_ticker("BTC-USD").await.unwrap();
+    let _ticker = client
+        .get_product_ticker("BTC-USD", Some("30902419"), None, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
@@ -70,7 +73,7 @@ async fn test_get_currencies() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_currency() {
     let client = PublicClient::new_sandbox();
-    let _currency = client.get_currency("BTC").await.unwrap();
+    let _currency = client.get_currency("LINK").await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
