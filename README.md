@@ -3,7 +3,7 @@ A Rust wraper for the Coinbase Pro API
 
 [Documentation](https://docs.rs/coinbase-client/1.0.0-beta/coinbase_client/)
 
-[Latest Version]: https://img.shields.io/badge/Version-alpha-green
+[Latest Version]: https://img.shields.io/badge/Version-beta-blue
 [crates.io]: https://crates.io/crates/coinbase_client
 
 
