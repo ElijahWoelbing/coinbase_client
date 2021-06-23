@@ -43,7 +43,7 @@ impl PublicClient {
     /// Creates a `PublicClient`
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// ~~~~
     pub fn new() -> Self {
         Self {
@@ -55,7 +55,7 @@ impl PublicClient {
     /// Creates a `PublicClient` to be used with the coinbase pro sandbox API
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// ~~~~
     pub fn new_sandbox() -> Self {
         Self {
@@ -69,7 +69,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#get-products)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let products = client.get_products().await.unwrap();
     /// ~~~~
     pub async fn get_products(&self) -> Result<Vec<Product>, Error> {
@@ -82,7 +82,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#get-single-product)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let product = client.get_product("BTC-USD").await.unwrap();
     /// ~~~~
     pub async fn get_product(&self, id: &str) -> Result<Product, Error> {
@@ -109,7 +109,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#get-product-order-book)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let order_book = client.get_product_order_book("BTC-USD").await.unwrap();
     /// ~~~~
     pub async fn get_product_order_book(&self, id: &str) -> Result<OrderBook<BookEntry>, Error> {
@@ -123,7 +123,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#get-product-order-book)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let order_book = client
     ///     .get_product_order_book_top50("BTC-USD")
     ///     .await
@@ -143,7 +143,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#get-product-order-book)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let order_book = client.get_product_order_book_all("BTC-USD").await.unwrap();
     /// ~~~~
     pub async fn get_product_order_book_all(
@@ -162,7 +162,7 @@ impl PublicClient {
     /// This request is [paginated](https://docs.pro.coinbase.com/#pagination)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let ticker = client
     ///     .get_product_ticker("BTC-USD", Some("30902419"), None, None)
     ///     .await
@@ -197,7 +197,7 @@ impl PublicClient {
     /// This request is [paginated](https://docs.pro.coinbase.com/#pagination)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let trades = client
     ///     .get_product_trades("BTC-USD", None, Some("30898635"), Some(100))
     ///     .await
@@ -230,7 +230,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#get-historic-rates)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let historical_rates = client
     ///     .get_product_historic_rates("BTC-USD", None, None, Some(Granularity::OneMinute))
     ///     .await
@@ -273,7 +273,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#get-24hr-stats)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let twenty_four_hour_stats = client.get_product_24hr_stats("BTC-USD").await.unwrap();
     /// ~~~~
     pub async fn get_product_24hr_stats(&self, id: &str) -> Result<TwentyFourHourStats, Error> {
@@ -286,7 +286,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#get-currencies)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let currencies = client.get_currencies().await.unwrap();
     /// ~~~~
     pub async fn get_currencies(&self) -> Result<Vec<Currency>, Error> {
@@ -299,7 +299,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#get-a-currency)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let currency = client.get_currency("LINK").await.unwrap();
     /// ~~~~
     pub async fn get_currency(&self, id: &str) -> Result<Currency, Error> {
@@ -311,7 +311,7 @@ impl PublicClient {
     /// [api docs](https://docs.pro.coinbase.com/#time)
     /// <br>
     /// ~~~~
-    /// let client = PublicClient::new_sandbox("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
+    /// let client = PublicClient::new();
     /// let time = client.get_time().await.unwrap();
     /// ~~~~
     pub async fn get_time(&self) -> Result<Time, Error> {
@@ -425,7 +425,7 @@ pub struct Currency {
 #[derive(serde::Deserialize, Debug)]
 pub struct CurrencyDetails {
     pub r#type: String, // use raw identifier to allow reserved keyword
-    pub symbol: String,
+    pub symbol: Option<String>,
     pub network_confirmations: u64,
     pub sort_order: u64,
     pub crypto_address_link: String,

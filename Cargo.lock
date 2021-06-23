@@ -57,7 +57,7 @@ dependencies = [
 
 [[package]]
 name = "coinbase-client"
-version = "1.0.0-beta"
+version = "1.0.1-alpha"
 dependencies = [
  "base64",
  "chrono",
