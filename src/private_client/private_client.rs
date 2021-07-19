@@ -1154,10 +1154,10 @@ pub struct AccountHistoryDetails {
 /// A structure that repersents Deposit Info
 #[derive(Deserialize, Debug)]
 pub struct DepositInfo {
-    id: String,
-    amount: String,
-    currency: String,
-    payout_at: Option<String>,
+    pub id: String,
+    pub amount: String,
+    pub currency: String,
+    pub payout_at: Option<String>,
 }
 
 /// A structure that repersents Withdraw Info
@@ -1233,9 +1233,9 @@ pub struct Fill {
 /// A structure that represents your current maker & taker fee rates, as well as your 30-day trailing volume
 #[derive(Debug, Deserialize)]
 pub struct Fees {
-    maker_fee_rate: String,
-    taker_fee_rate: String,
-    usd_volume: String,
+    pub maker_fee_rate: String,
+    pub taker_fee_rate: String,
+    pub usd_volume: String,
 }
 
 /// A structure represents a single profile
