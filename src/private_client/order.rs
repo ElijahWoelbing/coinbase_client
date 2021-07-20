@@ -21,7 +21,7 @@ pub struct Order {
 
 /// A `OrderBuilder` should be used to create a `Order` with  custom configuration.
 impl Order {
-    /// returns a `OrderBuilder` with requiered market-order parameters, equivalent OrderBuilder::market
+    /// returns a `OrderBuilder` with required market-order parameters, equivalent OrderBuilder::market
     pub fn market_builder(
         side: OrderSide,
         product_id: &str,
@@ -51,7 +51,7 @@ impl Order {
         }
     }
 
-    /// returns a `OrderBuilder` with requiered limit-order parameters, equivalent OrderBuilder::limit
+    /// returns a `OrderBuilder` with required limit-order parameters, equivalent OrderBuilder::limit
     pub fn limit_builder(
         side: OrderSide,
         product_id: &str,
@@ -76,7 +76,7 @@ impl Order {
         }
     }
 
-    /// returns a `OrderBuilder` with requiered stop-order parameters, equivalent OrderBuilder::stop
+    /// returns a `OrderBuilder` with required stop-order parameters, equivalent OrderBuilder::stop
     pub fn stop_builder(
         side: OrderSide,
         product_id: &str,
@@ -106,7 +106,7 @@ impl Order {
 
 /// A `OrderBuilder` can be used to create a `Order` with custom configuration.
 /// <br>
-/// Confiuguration parameters details can be found [here](https://docs.pro.coinbase.com/#orders)
+/// Configuration parameters details can be found [here](https://docs.pro.coinbase.com/#orders)
 pub struct OrderBuilder {
     r#type: String,
     size: Option<f64>,
@@ -125,7 +125,7 @@ pub struct OrderBuilder {
 }
 
 impl OrderBuilder {
-    /// returns a `OrderBuilder` with requiered market-order parameters.
+    /// returns a `OrderBuilder` with required market-order parameters.
     pub fn market(
         side: OrderSide,
         product_id: &str,
@@ -155,7 +155,7 @@ impl OrderBuilder {
         }
     }
 
-    /// returns a `OrderBuilder` with requiered limit-order parameters.
+    /// returns a `OrderBuilder` with required limit-order parameters.
     pub fn limit(
         side: OrderSide,
         product_id: &str,
@@ -180,7 +180,7 @@ impl OrderBuilder {
         }
     }
 
-    /// returns a `OrderBuilder` with requiered stop-order parameters.
+    /// returns a `OrderBuilder` with required stop-order parameters.
     pub fn stop(
         side: OrderSide,
         product_id: &str,

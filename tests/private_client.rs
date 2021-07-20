@@ -197,10 +197,10 @@ async fn test_generate_crypto_address() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-async fn test_get_withdrawls() {
+async fn test_get_withdrawals() {
     let client = create_client();
-    let _withdrawls = client
-        .get_withdrawls(
+    let _withdrawals = client
+        .get_withdrawals(
             Some("b7482eaa-3eea-4065-9d81-1484257c5f92"),
             None,
             None,
@@ -211,10 +211,10 @@ async fn test_get_withdrawls() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-async fn test_get_internal_withdrawls() {
+async fn test_get_internal_withdrawals() {
     let client = create_client();
-    let _withdrawls = client
-        .get_internal_withdrawls(
+    let _withdrawals = client
+        .get_internal_withdrawals(
             Some("b7482eaa-3eea-4065-9d81-1484257c5f92"),
             None,
             None,
@@ -225,10 +225,10 @@ async fn test_get_internal_withdrawls() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-async fn test_get_withdrawl() {
+async fn test_get_withdrawal() {
     let client = create_client();
-    let _withdrawl = client
-        .get_withdrawl("0e94a87f-9d50-4ead-86ac-7898830c5edf")
+    let _withdrawal = client
+        .get_withdrawal("0e94a87f-9d50-4ead-86ac-7898830c5edf")
         .await
         .unwrap();
 }
@@ -274,7 +274,7 @@ async fn test_get_fee_estimate_() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_stablecoin_conversion() {
     let client = create_client();
-    let _convertion = client
+    let _conversion = client
         .convert_stablecoin("USD", "USDC", 10.00)
         .await
         .unwrap();

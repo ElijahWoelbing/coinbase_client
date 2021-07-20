@@ -1,4 +1,4 @@
-/// A structure that repersents a Report
+/// A structure that represents a Report
 #[derive(serde::Serialize, Debug)]
 pub struct Report {
     r#type: String,
