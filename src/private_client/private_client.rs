@@ -614,7 +614,7 @@ impl PrivateClient {
     /// ~~~~
     pub async fn deposit_funds(
         &self,
-        amount: f64,
+        amount: &str,
         currency: &str,
         payment_method_id: &str,
     ) -> Result<DepositInfo, Error> {
