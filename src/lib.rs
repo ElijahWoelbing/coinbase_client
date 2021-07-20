@@ -7,7 +7,6 @@ pub mod public_client;
 
 use self::error::{Error, ErrorKind, ErrorMessage, StatusError};
 use chrono::{DateTime, TimeZone, Utc};
-use serde::{self, de};
 use serde::{Deserialize, Deserializer};
 
 pub(crate) const COINBASE_API_URL: &'static str = "https://api.pro.coinbase.com";
