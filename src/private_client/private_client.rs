@@ -961,7 +961,7 @@ impl PrivateClient {
             )
             .await?)
     }
-    
+
     /// Reports provide batches of historic information about your profile in various human and machine readable forms    
     /// <br>
     /// Create a `Report` useing [`ReportBuilder`](https://docs.rs/coinbase-client/1.0.0-alpha/coinbase_client/private_client/struct.ReportBuilder.html)
