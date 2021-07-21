@@ -1091,12 +1091,12 @@ pub enum OrderStatus {
 /// A structure that represents a Stablecoin Conversion
 #[derive(Deserialize, Debug)]
 pub struct StablecoinConversion {
-    id: String,
-    amount: String,
-    from_account_id: String,
-    to_account_id: String,
-    from: String,
-    to: String,
+    pub id: String,
+    pub amount: String,
+    pub from_account_id: String,
+    pub to_account_id: String,
+    pub from: String,
+    pub to: String,
 }
 
 /// A structure that represents an Account
@@ -1114,35 +1114,35 @@ pub struct Account {
 /// A structure that represents an Account History
 #[derive(Deserialize, Debug)]
 pub struct AccountHistory {
-    id: String,
+    pub id: String,
     #[serde(deserialize_with = "deserialize_to_date")]
-    created_at: DateTime<Utc>,
-    amount: String,
-    balance: String,
-    r#type: String,
-    details: AccountHistoryDetails,
+    pub created_at: DateTime<Utc>,
+    pub amount: String,
+    pub balance: String,
+    pub r#type: String,
+    pub details: AccountHistoryDetails,
 }
 
 /// A structure that represents an Account Hold
 #[derive(Deserialize, Debug)]
 pub struct Hold {
-    id: String,
-    account_id: String,
+    pub id: String,
+    pub account_id: String,
     #[serde(deserialize_with = "deserialize_to_date")]
-    created_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
     #[serde(deserialize_with = "deserialize_to_date")]
-    updated_at: DateTime<Utc>,
-    amount: String,
-    r#type: String,
-    r#ref: String,
+    pub updated_at: DateTime<Utc>,
+    pub amount: String,
+    pub r#type: String,
+    pub r#ref: String,
 }
 
 /// A structure that represents Account History Details
 #[derive(Deserialize, Debug)]
 pub struct AccountHistoryDetails {
-    order_id: Option<String>,
-    trade_id: Option<String>,
-    product_id: Option<String>,
+    pub order_id: Option<String>,
+    pub trade_id: Option<String>,
+    pub product_id: Option<String>,
 }
 
 /// A structure that represents Deposit Info
@@ -1157,71 +1157,71 @@ pub struct DepositInfo {
 /// A structure that represents Withdraw Info
 #[derive(Deserialize, Debug)]
 pub struct WithdrawInfo {
-    id: String,
-    amount: String,
-    currency: String,
+    pub id: String,
+    pub amount: String,
+    pub currency: String,
 }
 
 /// A structure that represents Order Info
 #[derive(Debug, Deserialize)]
 pub struct OrderInfo {
-    id: String,
-    price: String,
-    size: String,
-    product_id: String,
-    side: String,
-    stp: Option<String>,
-    r#type: String,
-    time_in_force: String,
-    post_only: bool,
+    pub id: String,
+    pub price: String,
+    pub size: String,
+    pub product_id: String,
+    pub side: String,
+    pub stp: Option<String>,
+    pub r#type: String,
+    pub time_in_force: String,
+    pub post_only: bool,
     #[serde(deserialize_with = "deserialize_to_date")]
-    created_at: DateTime<Utc>,
-    fill_fees: String,
-    filled_size: String,
-    executed_value: String,
-    status: String,
-    settled: bool,
+    pub created_at: DateTime<Utc>,
+    pub fill_fees: String,
+    pub filled_size: String,
+    pub executed_value: String,
+    pub status: String,
+    pub settled: bool,
 }
 
 /// A structure that represents Report Info
 #[derive(Debug, Deserialize)]
 pub struct ReportInfo {
-    id: String,
-    r#type: String,
-    status: String,
+    pub id: String,
+    pub r#type: String,
+    pub status: String,
     #[serde(default, deserialize_with = "deserialize_option_to_date")]
-    created_at: Option<DateTime<Utc>>,
+    pub created_at: Option<DateTime<Utc>>,
     #[serde(default, deserialize_with = "deserialize_option_to_date")]
-    completed_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
     #[serde(default, deserialize_with = "deserialize_option_to_date")]
-    expires_at: Option<DateTime<Utc>>,
-    file_url: Option<String>,
-    params: Option<ReportParams>,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub file_url: Option<String>,
+    pub params: Option<ReportParams>,
 }
 
 /// A structure that represents Report Info Params
 #[derive(Debug, Deserialize)]
 pub struct ReportParams {
     #[serde(deserialize_with = "deserialize_to_date")]
-    start_date: DateTime<Utc>,
+    pub start_date: DateTime<Utc>,
     #[serde(deserialize_with = "deserialize_to_date")]
-    end_date: DateTime<Utc>,
+    pub end_date: DateTime<Utc>,
 }
 
 /// A structure that represents a Fill
 #[derive(Debug, Deserialize)]
 pub struct Fill {
-    trade_id: u64,
-    product_id: String,
-    price: String,
-    size: String,
-    order_id: String,
+    pub trade_id: u64,
+    pub product_id: String,
+    pub price: String,
+    pub size: String,
+    pub order_id: String,
     #[serde(deserialize_with = "deserialize_to_date")]
-    created_at: DateTime<Utc>,
-    liquidity: String,
-    fee: String,
-    settled: bool,
-    side: String,
+    pub created_at: DateTime<Utc>,
+    pub liquidity: String,
+    pub fee: String,
+    pub settled: bool,
+    pub side: String,
 }
 
 /// A structure that represents your current maker & taker fee rates, as well as your 30-day trailing volume
@@ -1235,11 +1235,11 @@ pub struct Fees {
 /// A structure represents a single profile
 #[derive(Debug, Deserialize)]
 pub struct Profile {
-    id: String,
-    user_id: String,
-    name: String,
-    active: bool,
-    is_default: bool,
+    pub id: String,
+    pub user_id: String,
+    pub name: String,
+    pub active: bool,
+    pub is_default: bool,
     #[serde(deserialize_with = "deserialize_to_date")]
-    created_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
