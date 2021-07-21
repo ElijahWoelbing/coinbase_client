@@ -4,24 +4,24 @@ use serde::Serialize;
 #[derive(Serialize, Debug)]
 pub struct Order {
     r#type: String,
-    size: Option<f64>,
-    price: Option<f64>,
+    size: Option<String>,
+    price: Option<String>,
     side: OrderSide,
     client_oid: Option<String>,
     self_trade_prevention: Option<SelfTradePrevention>,
     time_in_force: Option<TimeInForce>,
     cancel_after: Option<CancelAfter>,
     post_only: Option<bool>,
-    funds: Option<f64>,
+    funds: Option<String>,
     product_id: String,
     stp: Option<String>,
     stop: Option<OrderStop>,
-    stop_price: Option<f64>,
+    stop_price: Option<String>,
 }
 
 /// A `OrderBuilder` should be used to create a `Order` with  custom configuration.
 impl Order {
-    /// returns a `OrderBuilder` with requiered market-order parameters, equivalent OrderBuilder::market
+    /// returns a `OrderBuilder` with required market-order parameters, equivalent OrderBuilder::market
     pub fn market_builder(
         side: OrderSide,
         product_id: &str,
@@ -30,7 +30,7 @@ impl Order {
         OrderBuilder {
             r#type: "market".to_string(),
             size: match size_or_funds {
-                SizeOrFunds::Size(n) => Some(n),
+                SizeOrFunds::Size(ref n) => Some(n.to_owned()),
                 _ => None,
             },
             price: None,
@@ -41,7 +41,7 @@ impl Order {
             cancel_after: None,
             post_only: None,
             funds: match size_or_funds {
-                SizeOrFunds::Funds(n) => Some(n),
+                SizeOrFunds::Funds(ref n) => Some(n.to_owned()),
                 _ => None,
             },
             product_id: product_id.to_string(),
@@ -51,17 +51,17 @@ impl Order {
         }
     }
 
-    /// returns a `OrderBuilder` with requiered limit-order parameters, equivalent OrderBuilder::limit
+    /// returns a `OrderBuilder` with required limit-order parameters, equivalent OrderBuilder::limit
     pub fn limit_builder(
         side: OrderSide,
         product_id: &str,
-        price: f64,
-        size: f64,
+        price: &str,
+        size: &str,
     ) -> impl LimitOptions + SharedOptions {
         OrderBuilder {
             r#type: "limit".to_string(),
-            size: Some(size),
-            price: Some(price),
+            size: Some(size.to_owned()),
+            price: Some(price.to_owned()),
             side: side,
             client_oid: None,
             self_trade_prevention: None,
@@ -76,19 +76,19 @@ impl Order {
         }
     }
 
-    /// returns a `OrderBuilder` with requiered stop-order parameters, equivalent OrderBuilder::stop
+    /// returns a `OrderBuilder` with required stop-order parameters, equivalent OrderBuilder::stop
     pub fn stop_builder(
         side: OrderSide,
         product_id: &str,
-        price: f64,
-        size: f64,
-        stop_price: f64,
+        price: &str,
+        size: String,
+        stop_price: &str,
         stop: OrderStop,
     ) -> impl SharedOptions {
         OrderBuilder {
             r#type: "limit".to_string(),
             size: Some(size),
-            price: Some(price),
+            price: Some(price.to_owned()),
             side: side,
             client_oid: None,
             self_trade_prevention: None,
@@ -99,33 +99,33 @@ impl Order {
             product_id: product_id.to_string(),
             stp: None,
             stop: Some(stop),
-            stop_price: Some(stop_price),
+            stop_price: Some(stop_price.to_owned()),
         }
     }
 }
 
 /// A `OrderBuilder` can be used to create a `Order` with custom configuration.
 /// <br>
-/// Confiuguration parameters details can be found [here](https://docs.pro.coinbase.com/#orders)
+/// Configuration parameters details can be found [here](https://docs.pro.coinbase.com/#orders)
 pub struct OrderBuilder {
     r#type: String,
-    size: Option<f64>,
-    price: Option<f64>,
+    size: Option<String>,
+    price: Option<String>,
     side: OrderSide,
     client_oid: Option<String>,
     self_trade_prevention: Option<SelfTradePrevention>,
     time_in_force: Option<TimeInForce>,
     cancel_after: Option<CancelAfter>,
     post_only: Option<bool>,
-    funds: Option<f64>,
+    funds: Option<String>,
     product_id: String,
     stp: Option<String>,
     stop: Option<OrderStop>,
-    stop_price: Option<f64>,
+    stop_price: Option<String>,
 }
 
 impl OrderBuilder {
-    /// returns a `OrderBuilder` with requiered market-order parameters.
+    /// returns a `OrderBuilder` with required market-order parameters.
     pub fn market(
         side: OrderSide,
         product_id: &str,
@@ -134,7 +134,7 @@ impl OrderBuilder {
         Self {
             r#type: "market".to_string(),
             size: match size_or_funds {
-                SizeOrFunds::Size(n) => Some(n),
+                SizeOrFunds::Size(ref n) => Some(n.to_owned()),
                 _ => None,
             },
             price: None,
@@ -145,7 +145,7 @@ impl OrderBuilder {
             cancel_after: None,
             post_only: None,
             funds: match size_or_funds {
-                SizeOrFunds::Funds(n) => Some(n),
+                SizeOrFunds::Funds(ref n) => Some(n.to_owned()),
                 _ => None,
             },
             product_id: product_id.to_string(),
@@ -155,17 +155,17 @@ impl OrderBuilder {
         }
     }
 
-    /// returns a `OrderBuilder` with requiered limit-order parameters.
+    /// returns a `OrderBuilder` with required limit-order parameters.
     pub fn limit(
         side: OrderSide,
         product_id: &str,
-        price: f64,
-        size: f64,
+        price: &str,
+        size: &str,
     ) -> impl LimitOptions + SharedOptions {
         Self {
             r#type: "limit".to_string(),
-            size: Some(size),
-            price: Some(price),
+            size: Some(size.to_owned()),
+            price: Some(price.to_owned()),
             side: side,
             client_oid: None,
             self_trade_prevention: None,
@@ -180,19 +180,19 @@ impl OrderBuilder {
         }
     }
 
-    /// returns a `OrderBuilder` with requiered stop-order parameters.
+    /// returns a `OrderBuilder` with required stop-order parameters.
     pub fn stop(
         side: OrderSide,
         product_id: &str,
-        price: f64,
-        size: f64,
-        stop_price: f64,
+        price: &str,
+        size: &str,
+        stop_price: &str,
         stop: OrderStop,
     ) -> impl SharedOptions {
         Self {
             r#type: "limit".to_string(),
-            size: Some(size),
-            price: Some(price),
+            size: Some(size.to_owned()),
+            price: Some(price.to_owned()),
             side: side,
             client_oid: None,
             self_trade_prevention: None,
@@ -203,7 +203,7 @@ impl OrderBuilder {
             product_id: product_id.to_string(),
             stp: None,
             stop: Some(stop),
-            stop_price: Some(stop_price),
+            stop_price: Some(stop_price.to_owned()),
         }
     }
 }
@@ -296,10 +296,10 @@ pub enum OrderStop {
 }
 
 /// Size or Funds of Currency
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum SizeOrFunds {
-    Size(f64),
-    Funds(f64),
+    Size(String),
+    Funds(String),
 }
 
 // Time in force policies provide guarantees about the lifetime of an `Order`
@@ -406,8 +406,8 @@ impl serde::Serialize for SizeOrFunds {
         S: serde::ser::Serializer,
     {
         match *self {
-            Self::Size(size) => serializer.serialize_f64(size),
-            Self::Funds(funds) => serializer.serialize_f64(funds),
+            Self::Size(ref size) => serializer.serialize_str(size),
+            Self::Funds(ref funds) => serializer.serialize_str(funds),
         }
     }
 }
