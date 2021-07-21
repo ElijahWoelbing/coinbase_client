@@ -26,21 +26,27 @@ async fn test_get_account() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_place_order_market_funds() {
-    let order = OrderBuilder::market(OrderSide::Buy, "BTC-USD", SizeOrFunds::Funds(10.00)).build();
+    let order = OrderBuilder::market(
+        OrderSide::Buy,
+        "BTC-USD",
+        SizeOrFunds::Funds("10.00".to_owned()),
+    )
+    .build();
     let client = create_client();
     let _res = client.place_order(order).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_place_order_market_size() {
-    let order = OrderBuilder::market(OrderSide::Buy, "ADA", SizeOrFunds::Size(5.00)).build();
+    let order =
+        OrderBuilder::market(OrderSide::Buy, "ADA", SizeOrFunds::Size("5.00".to_owned())).build();
     let client = create_client();
     let _res = client.place_order(order).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_place_order_limit() {
-    let order = Order::limit_builder(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
+    let order = Order::limit_builder(OrderSide::Buy, "BTC-USD", "36000.0", "1.0").build();
     let client = create_client();
     let _res = client.place_order(order).await.unwrap();
 }
@@ -50,9 +56,9 @@ async fn test_place_order_stop() {
     let order = OrderBuilder::stop(
         OrderSide::Buy,
         "BTC-USD",
-        36000.0,
-        1.0,
-        37000.0,
+        "36000.0",
+        "1.0",
+        "37000.0",
         OrderStop::Loss,
     )
     .build();
@@ -62,7 +68,7 @@ async fn test_place_order_stop() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_cancel_order() {
-    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 33000.0, 1.0).build();
+    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", "33000.0", "1.0").build();
     let client = create_client();
     let order_to_cancel_id = client.place_order(order).await.unwrap();
     let _canceled_order_id = client.cancel_order(&order_to_cancel_id).await.unwrap();
@@ -90,7 +96,7 @@ async fn test_get_orders() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_order() {
-    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
+    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", "36000.0", "1.0").build();
     let client = create_client();
     let order_id = client.place_order(order).await.unwrap();
     let _order = client.get_order(&order_id).await.unwrap();
@@ -173,7 +179,7 @@ async fn test_get_coinbase_accounts() {
 async fn test_deposit_funds() {
     let client = create_client();
     let _deposit = client
-        .deposit_funds(10.00, "USD", "9da3e279-20a1-57e4-95f8-52ec41041999")
+        .deposit_funds("10.00", "USD", "9da3e279-20a1-57e4-95f8-52ec41041999")
         .await
         .unwrap();
 }
