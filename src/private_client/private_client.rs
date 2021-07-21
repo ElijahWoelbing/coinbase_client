@@ -1229,7 +1229,7 @@ pub struct Fill {
 pub struct Fees {
     maker_fee_rate: String,
     taker_fee_rate: String,
-    usd_volume: String,
+    usd_volume: Option<String>,
 }
 
 /// A structure represents a single profile
