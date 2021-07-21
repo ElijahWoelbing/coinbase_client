@@ -7,7 +7,6 @@ pub mod public_client;
 
 use self::error::{Error, ErrorKind, ErrorMessage, StatusError};
 use chrono::{DateTime, TimeZone, Utc};
-use serde::{self, de};
 use serde::{Deserialize, Deserializer};
 
 pub(crate) const COINBASE_API_URL: &'static str = "https://api.pro.coinbase.com";
@@ -17,7 +16,7 @@ pub(crate) const COINBASE_SANDBOX_API_URL: &'static str =
 /// alias for serde_json::Value return type for data that cannot predictably deserialized into a strongly typed struct
 pub type Json = serde_json::Value;
 
-// derserilize to a type that impls the Deserialize trait
+// deserialize to a type that impls the Deserialize trait
 pub(crate) async fn deserialize_response<T>(response: reqwest::Response) -> Result<T, Error>
 where
     T: serde::de::DeserializeOwned,

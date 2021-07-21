@@ -106,10 +106,10 @@ impl PrivateClient {
         &self,
         url: &str,
         body: Option<&str>,
-        meathod: &str,
+        method: &str,
     ) -> reqwest::header::HeaderMap {
         let timestamp = PrivateClient::get_current_timestamp().unwrap();
-        let signature = self.sign_message(url, body, &timestamp, meathod);
+        let signature = self.sign_message(url, body, &timestamp, method);
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             reqwest::header::USER_AGENT,
@@ -140,25 +140,19 @@ impl PrivateClient {
         headers
     }
 
-    fn sign_message(
-        &self,
-        url: &str,
-        body: Option<&str>,
-        timestamp: &str,
-        meathod: &str,
-    ) -> String {
+    fn sign_message(&self, url: &str, body: Option<&str>, timestamp: &str, method: &str) -> String {
         let mut prehash = String::new();
         // omit body if not supplied
         match body {
             Some(body) => {
                 prehash.push_str(&timestamp);
-                prehash.push_str(&meathod);
+                prehash.push_str(&method);
                 prehash.push_str(&url);
                 prehash.push_str(&body);
             }
             None => {
                 prehash.push_str(&timestamp);
-                prehash.push_str(&meathod);
+                prehash.push_str(&method);
                 prehash.push_str(&url);
             }
         }
@@ -305,7 +299,7 @@ impl PrivateClient {
     /// <br>
     /// [Overview of order types and settings](https://help.coinbase.com/en/pro/trading-and-funding/orders/overview-of-order-types-and-settings-stop-limit-market)
     /// <br>
-    /// Create order order useing [`OrderBuilder`](https://docs.rs/coinbase-client/1.0.0-alpha/coinbase_client/private_client/struct.OrderBuilder.html)
+    /// Create order order using [`OrderBuilder`](https://docs.rs/coinbase-client/1.0.0-alpha/coinbase_client/private_client/struct.OrderBuilder.html)
     /// <br>
     /// [API docs](https://docs.pro.coinbase.com/#place-a-new-order)
     /// ~~~~
@@ -614,7 +608,7 @@ impl PrivateClient {
     /// ~~~~
     pub async fn deposit_funds(
         &self,
-        amount: f64,
+        amount: &str,
         currency: &str,
         payment_method_id: &str,
     ) -> Result<DepositInfo, Error> {
@@ -712,8 +706,8 @@ impl PrivateClient {
     /// <br>
     /// ~~~~
     /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
-    /// let withdrawls = client
-    ///     .get_withdrawls(
+    /// let withdrawals = client
+    ///     .get_withdrawals(
     ///         Some("b7482eaa-3eea-4065-9d81-1484257c5f92"),
     ///         None,
     ///         None,
@@ -722,7 +716,7 @@ impl PrivateClient {
     ///     .await
     ///     .unwrap();
     /// ~~~~
-    pub async fn get_withdrawls(
+    pub async fn get_withdrawals(
         &self,
         profile_id: Option<&str>,
         before: Option<&str>,
@@ -757,8 +751,8 @@ impl PrivateClient {
     /// <br>
     /// ~~~~
     /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
-    /// let withdrawls = client
-    ///     .get_internal_withdrawls(
+    /// let withdrawals = client
+    ///     .get_internal_withdrawals(
     ///         Some("b7482eaa-3eea-4065-9d81-1484257c5f92"),
     ///         None,
     ///         None,
@@ -767,7 +761,7 @@ impl PrivateClient {
     ///     .await
     ///     .unwrap();
     /// ~~~~
-    pub async fn get_internal_withdrawls(
+    pub async fn get_internal_withdrawals(
         &self,
         profile_id: Option<&str>,
         before: Option<&str>,
@@ -787,12 +781,12 @@ impl PrivateClient {
     /// <br>
     /// ~~~~
     /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
-    /// let withdrawl = client
-    ///     .get_withdrawl("0e94a87f-9d50-4ead-86ac-7898830c5edf")
+    /// let withdrawal = client
+    ///     .get_withdrawal("0e94a87f-9d50-4ead-86ac-7898830c5edf")
     ///     .await
     ///     .unwrap();
     /// ~~~~
-    pub async fn get_withdrawl(&self, transfer_id: &str) -> Result<Json, Error> {
+    pub async fn get_withdrawal(&self, transfer_id: &str) -> Result<Json, Error> {
         Ok(self.get(&format!("/transfers/{}", transfer_id)).await?)
     }
 
@@ -939,7 +933,7 @@ impl PrivateClient {
     /// <br>
     /// ~~~~
     /// let client = PrivateClient::new("tGJSu7SuV3/HOR1/9DcFwO1s560BKI51SDEbnwuvTPbw4BbG5lYJLuKUFpD8TPU61R85dxJpGTygKZ5v+6wJdA==", "t9riylyad0r", "4a9f6de8bcdee641a0a207613dfb43ef");
-    /// let convertion = client
+    /// let conversion = client
     ///     .convert_stablecoin("USD", "USDC", 10.00)
     ///     .await
     ///     .unwrap();
@@ -961,10 +955,10 @@ impl PrivateClient {
             )
             .await?)
     }
-    
+
     /// Reports provide batches of historic information about your profile in various human and machine readable forms    
     /// <br>
-    /// Create a `Report` useing [`ReportBuilder`](https://docs.rs/coinbase-client/1.0.0-alpha/coinbase_client/private_client/struct.ReportBuilder.html)
+    /// Create a `Report` using [`ReportBuilder`](https://docs.rs/coinbase-client/1.0.0-alpha/coinbase_client/private_client/struct.ReportBuilder.html)
     /// <br>
     /// [API docs](https://docs.pro.coinbase.com/#create-a-new-report)
     /// <br>
@@ -1094,7 +1088,7 @@ pub enum OrderStatus {
     OpenActivePending,
 }
 
-/// A structure that repersents a Stablecoin Conversion
+/// A structure that represents a Stablecoin Conversion
 #[derive(Deserialize, Debug)]
 pub struct StablecoinConversion {
     id: String,
@@ -1105,7 +1099,7 @@ pub struct StablecoinConversion {
     to: String,
 }
 
-/// A structure that repersents an Account
+/// A structure that represents an Account
 #[derive(Deserialize, Debug)]
 pub struct Account {
     pub id: String,
@@ -1117,7 +1111,7 @@ pub struct Account {
     pub trading_enabled: bool,
 }
 
-/// A structure that repersents an Account History
+/// A structure that represents an Account History
 #[derive(Deserialize, Debug)]
 pub struct AccountHistory {
     id: String,
@@ -1129,7 +1123,7 @@ pub struct AccountHistory {
     details: AccountHistoryDetails,
 }
 
-/// A structure that repersents an Account Hold
+/// A structure that represents an Account Hold
 #[derive(Deserialize, Debug)]
 pub struct Hold {
     id: String,
@@ -1143,7 +1137,7 @@ pub struct Hold {
     r#ref: String,
 }
 
-/// A structure that repersents Account History Details
+/// A structure that represents Account History Details
 #[derive(Deserialize, Debug)]
 pub struct AccountHistoryDetails {
     order_id: Option<String>,
@@ -1151,7 +1145,7 @@ pub struct AccountHistoryDetails {
     product_id: Option<String>,
 }
 
-/// A structure that repersents Deposit Info
+/// A structure that represents Deposit Info
 #[derive(Deserialize, Debug)]
 pub struct DepositInfo {
     pub id: String,
@@ -1160,7 +1154,7 @@ pub struct DepositInfo {
     pub payout_at: Option<String>,
 }
 
-/// A structure that repersents Withdraw Info
+/// A structure that represents Withdraw Info
 #[derive(Deserialize, Debug)]
 pub struct WithdrawInfo {
     id: String,
@@ -1168,7 +1162,7 @@ pub struct WithdrawInfo {
     currency: String,
 }
 
-/// A structure that repersents Order Info
+/// A structure that represents Order Info
 #[derive(Debug, Deserialize)]
 pub struct OrderInfo {
     id: String,
@@ -1189,7 +1183,7 @@ pub struct OrderInfo {
     settled: bool,
 }
 
-/// A structure that repersents Report Info
+/// A structure that represents Report Info
 #[derive(Debug, Deserialize)]
 pub struct ReportInfo {
     id: String,
@@ -1205,7 +1199,7 @@ pub struct ReportInfo {
     params: Option<ReportParams>,
 }
 
-/// A structure that repersents Report Info Params
+/// A structure that represents Report Info Params
 #[derive(Debug, Deserialize)]
 pub struct ReportParams {
     #[serde(deserialize_with = "deserialize_to_date")]
@@ -1214,7 +1208,7 @@ pub struct ReportParams {
     end_date: DateTime<Utc>,
 }
 
-/// A structure that repersents a Fill
+/// A structure that represents a Fill
 #[derive(Debug, Deserialize)]
 pub struct Fill {
     trade_id: u64,
@@ -1235,7 +1229,7 @@ pub struct Fill {
 pub struct Fees {
     pub maker_fee_rate: String,
     pub taker_fee_rate: String,
-    pub usd_volume: String,
+    pub usd_volume: Option<String>,
 }
 
 /// A structure represents a single profile

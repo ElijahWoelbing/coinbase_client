@@ -26,21 +26,27 @@ async fn test_get_account() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_place_order_market_funds() {
-    let order = OrderBuilder::market(OrderSide::Buy, "BTC-USD", SizeOrFunds::Funds(10.00)).build();
+    let order = OrderBuilder::market(
+        OrderSide::Buy,
+        "BTC-USD",
+        SizeOrFunds::Funds("10.00".to_owned()),
+    )
+    .build();
     let client = create_client();
     let _res = client.place_order(order).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_place_order_market_size() {
-    let order = OrderBuilder::market(OrderSide::Buy, "ADA", SizeOrFunds::Size(5.00)).build();
+    let order =
+        OrderBuilder::market(OrderSide::Buy, "ADA", SizeOrFunds::Size("5.00".to_owned())).build();
     let client = create_client();
     let _res = client.place_order(order).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_place_order_limit() {
-    let order = Order::limit_builder(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
+    let order = Order::limit_builder(OrderSide::Buy, "BTC-USD", "36000.0", "1.0").build();
     let client = create_client();
     let _res = client.place_order(order).await.unwrap();
 }
@@ -50,9 +56,9 @@ async fn test_place_order_stop() {
     let order = OrderBuilder::stop(
         OrderSide::Buy,
         "BTC-USD",
-        36000.0,
-        1.0,
-        37000.0,
+        "36000.0",
+        "1.0",
+        "37000.0",
         OrderStop::Loss,
     )
     .build();
@@ -62,7 +68,7 @@ async fn test_place_order_stop() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_cancel_order() {
-    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 33000.0, 1.0).build();
+    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", "33000.0", "1.0").build();
     let client = create_client();
     let order_to_cancel_id = client.place_order(order).await.unwrap();
     let _canceled_order_id = client.cancel_order(&order_to_cancel_id).await.unwrap();
@@ -90,7 +96,7 @@ async fn test_get_orders() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_get_order() {
-    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", 36000.0, 1.0).build();
+    let order = OrderBuilder::limit(OrderSide::Buy, "BTC-USD", "36000.0", "1.0").build();
     let client = create_client();
     let order_id = client.place_order(order).await.unwrap();
     let _order = client.get_order(&order_id).await.unwrap();
@@ -173,7 +179,7 @@ async fn test_get_coinbase_accounts() {
 async fn test_deposit_funds() {
     let client = create_client();
     let _deposit = client
-        .deposit_funds(10.00, "USD", "9da3e279-20a1-57e4-95f8-52ec41041999")
+        .deposit_funds("10.00", "USD", "9da3e279-20a1-57e4-95f8-52ec41041999")
         .await
         .unwrap();
 }
@@ -197,10 +203,10 @@ async fn test_generate_crypto_address() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-async fn test_get_withdrawls() {
+async fn test_get_withdrawals() {
     let client = create_client();
-    let _withdrawls = client
-        .get_withdrawls(
+    let _withdrawals = client
+        .get_withdrawals(
             Some("b7482eaa-3eea-4065-9d81-1484257c5f92"),
             None,
             None,
@@ -211,10 +217,10 @@ async fn test_get_withdrawls() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-async fn test_get_internal_withdrawls() {
+async fn test_get_internal_withdrawals() {
     let client = create_client();
-    let _withdrawls = client
-        .get_internal_withdrawls(
+    let _withdrawals = client
+        .get_internal_withdrawals(
             Some("b7482eaa-3eea-4065-9d81-1484257c5f92"),
             None,
             None,
@@ -225,10 +231,10 @@ async fn test_get_internal_withdrawls() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-async fn test_get_withdrawl() {
+async fn test_get_withdrawal() {
     let client = create_client();
-    let _withdrawl = client
-        .get_withdrawl("0e94a87f-9d50-4ead-86ac-7898830c5edf")
+    let _withdrawal = client
+        .get_withdrawal("0e94a87f-9d50-4ead-86ac-7898830c5edf")
         .await
         .unwrap();
 }
@@ -274,7 +280,7 @@ async fn test_get_fee_estimate_() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_stablecoin_conversion() {
     let client = create_client();
-    let _convertion = client
+    let _conversion = client
         .convert_stablecoin("USD", "USDC", 10.00)
         .await
         .unwrap();
